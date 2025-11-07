@@ -280,3 +280,71 @@ button[disabled] {
     transform: translateY(0);
   }
 }
+
+.files-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.preview-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+.icon-btn {
+  background: var(--white);
+  border: 1px solid var(--border);
+  color: var(--text-light);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.icon-btn:hover {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  margin-top: 1.2rem;
+}
+
+.clear-btn {
+  background: #f3f3f3;
+  color: var(--text);
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: var(--transition);
+}
+
+.clear-btn:hover {
+  background: #e6e6e6;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

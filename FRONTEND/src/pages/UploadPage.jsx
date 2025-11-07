@@ -1,5 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
+import { uploadFiles } from "../services/api";
+import {
+  UploadSimple,
+  FileText,
+  Images,
+  PaperPlaneTilt,
+  Spinner,
+  WarningCircle,
+  CheckCircle,
+  XCircle,
+  Trash,
+  ArrowClockwise,
+} from "@phosphor-icons/react";
 import logo from "../assets/LogoAbr.png";
 import "../styles/UploadPage.css";
 
@@ -11,50 +24,35 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Quantidade de arquivos por categoria
+  const inputRefs = useRef([]); // refs dos inputs p/ reset controlado
+
   const getNumFilesByCategory = (cat) => (cat === "carga" ? 3 : 1);
 
-  // Atualiza inputs quando categoria muda
   useEffect(() => {
     setFiles(Array(getNumFilesByCategory(category)).fill(null));
   }, [category]);
 
-  // Lê parâmetros ?nota=...&categoria=...
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const nota = params.get("nota");
-    const categoria = params.get("categoria");
-    if (nota) setFileName(nota);
-    if (categoria) setCategory(categoria.toLowerCase());
-  }, []);
-
-  // Máscara automática XX-XXXXXX
   const formatDocumentNumber = (value) => {
     let digits = value.replace(/\D/g, "");
-    if (digits.length > 2)
-      digits = digits.slice(0, 2) + "-" + digits.slice(2, 8);
+    if (digits.length > 2) digits = digits.slice(0, 2) + "-" + digits.slice(2, 8);
     return digits;
   };
 
   const handleFileNameChange = (e) =>
     setFileName(formatDocumentNumber(e.target.value));
 
-  // Compressão e preview
   const handleFileChange = async (index, file) => {
     if (!file) return;
+
     if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
-      setMessage({
-        text: "⚠️ Apenas imagens nos formatos JPG e PNG são aceitas.",
-        type: "warning",
-      });
+      setMessage({ text: "Apenas imagens JPG e PNG são aceitas.", type: "warning" });
+      resetFile(index);
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setMessage({
-        text: "📁 Arquivo muito grande! Tamanho máximo: 5MB.",
-        type: "warning",
-      });
+      setMessage({ text: "Arquivo muito grande! Tamanho máximo: 5MB.", type: "warning" });
+      resetFile(index);
       return;
     }
 
@@ -64,6 +62,7 @@ export default function UploadPage() {
         maxWidthOrHeight: 1280,
         useWebWorker: true,
       };
+
       const compressed = await imageCompression(file, options);
 
       const updated = [...files];
@@ -73,33 +72,46 @@ export default function UploadPage() {
         preview: URL.createObjectURL(compressed),
       };
       setFiles(updated);
+      setMessage({ text: "", type: "" });
     } catch (err) {
-      console.error("Erro ao comprimir imagem:", err);
-      setMessage({
-        text: "❌ Erro ao processar imagem. Tente novamente ou envie outra foto.",
-        type: "error",
-      });
+      console.error(err);
+      setMessage({ text: "Erro ao processar a imagem. Tente novamente.", type: "error" });
+      resetFile(index);
     }
   };
 
-  // Validação
+  const resetFile = (index) => {
+    const updated = [...files];
+    updated[index] = null;
+    setFiles(updated);
+
+    if (inputRefs.current[index]) {
+      inputRefs.current[index].value = "";
+    }
+  };
+
+  const clearAll = () => {
+    setFileName("");
+    setCategory("conferencia");
+    setFiles(Array(getNumFilesByCategory("conferencia")).fill(null));
+    setMessage({ text: "", type: "" });
+    inputRefs.current.forEach((input) => {
+      if (input) input.value = "";
+    });
+  };
+
   const validate = () => {
     if (!/^[0-9]{2}-[0-9]{6}$/.test(fileName)) {
-      setMessage({
-        text: "⚠️ Use o formato correto: XX-XXXXXX.",
-        type: "warning",
-      });
+      setMessage({ text: "Formato inválido: use XX-XXXXXX.", type: "warning" });
       return false;
     }
-    const hasFile = files.some((f) => f && f.compressed);
-    if (!hasFile) {
-      setMessage({ text: "📁 Envie pelo menos uma imagem.", type: "warning" });
+    if (!files.some((f) => f && f.compressed)) {
+      setMessage({ text: "Envie pelo menos uma imagem válida.", type: "warning" });
       return false;
     }
     return true;
   };
 
-  // Upload
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ text: "", type: "" });
@@ -108,98 +120,46 @@ export default function UploadPage() {
     const formData = new FormData();
     formData.append("fileName", fileName);
     formData.append("category", category);
-    files.forEach(
-      (f) => f?.compressed && formData.append("fileUpload[]", f.compressed)
-    );
+    files.forEach((f) => f?.compressed && formData.append("fileUpload[]", f.compressed));
 
     try {
       setUploading(true);
       setProgress(0);
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "http://localhost:3000/api/upload", true);
-      xhr.timeout = 20000; // 20 segundos
-
-      // Progresso visual
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
+      const response = await uploadFiles(formData, (progressEvent) => {
+        if (progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
           setProgress(percent);
         }
-      };
-
-      // Resposta do backend
-      xhr.onload = () => {
-        setUploading(false);
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            if (response.success) {
-              setMessage({
-                text: "✅ Imagens enviadas com sucesso!",
-                type: "success",
-              });
-            } else if (response.error) {
-              setMessage({ text: `⚠️ ${response.error}`, type: "warning" });
-            } else {
-              setMessage({
-                text: "⚠️ Resposta inesperada do servidor.",
-                type: "warning",
-              });
-            }
-          } catch {
-            setMessage({
-              text: "✅ Upload concluído, mas resposta inválida do servidor.",
-              type: "warning",
-            });
-          }
-          setFileName("");
-          setCategory("conferencia");
-          setFiles(Array(getNumFilesByCategory("conferencia")).fill(null));
-          setProgress(0);
-        } else if (xhr.status >= 500) {
-          setMessage({
-            text: "❌ Erro interno no servidor. Tente novamente mais tarde.",
-            type: "error",
-          });
-        } else if (xhr.status === 413) {
-          setMessage({
-            text: "⚠️ Arquivo muito grande. Reduza o tamanho e tente novamente.",
-            type: "warning",
-          });
-        } else {
-          setMessage({
-            text: `❌ Erro ${xhr.status}: falha no envio.`,
-            type: "error",
-          });
-        }
-      };
-
-      // Timeout ou falha de conexão
-      xhr.ontimeout = () => {
-        setUploading(false);
-        setMessage({
-          text: "⏱️ Tempo de conexão excedido. Verifique sua internet.",
-          type: "error",
-        });
-      };
-
-      xhr.onerror = () => {
-        setUploading(false);
-        setMessage({
-          text: "🌐 Falha na comunicação com o servidor.",
-          type: "error",
-        });
-      };
-
-      xhr.send(formData);
-    } catch (error) {
-      console.error("Erro inesperado:", error);
-      setUploading(false);
-      setMessage({
-        text: "❌ Erro inesperado ao tentar enviar. Verifique a conexão e tente novamente.",
-        type: "error",
       });
+
+      if (response.success) {
+        setMessage({ text: "Imagens enviadas com sucesso!", type: "success" });
+        clearAll();
+      } else {
+        setMessage({
+          text: response.error || "Erro ao enviar os arquivos.",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      setMessage({ text: error.message, type: "error" });
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  };
+
+  const renderIcon = (type) => {
+    switch (type) {
+      case "success":
+        return <CheckCircle size={20} color="#27ae60" />;
+      case "error":
+        return <XCircle size={20} color="#e74c3c" />;
+      case "warning":
+        return <WarningCircle size={20} color="#f39c12" />;
+      default:
+        return null;
     }
   };
 
@@ -212,12 +172,12 @@ export default function UploadPage() {
       <main>
         <div className="container">
           <h1>
-            <i className="fa-solid fa-upload"></i> Upload de Documentos
+            <UploadSimple size={26} /> Upload de Documentos
           </h1>
 
-          <form onSubmit={handleSubmit} encType="multipart/form-data">
+          <form onSubmit={handleSubmit}>
             <label htmlFor="fileName">
-              <i className="fa-solid fa-file-lines"></i> Número do Documento
+              <FileText size={18} /> Número do Documento
             </label>
             <input
               type="text"
@@ -230,38 +190,50 @@ export default function UploadPage() {
             <small>Use o formato: XX-XXXXXX</small>
 
             <label htmlFor="category">
-              <i className="fa-solid fa-layer-group"></i> Categoria
+              <Images size={18} /> Categoria
             </label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
+            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="conferencia">Conferência</option>
               <option value="carga">Carga</option>
               <option value="canhoto">Canhoto</option>
             </select>
 
-            <div id="fileInputs">
+            <div className="files-container">
               {files.map((f, idx) => (
                 <div className="file-group" key={idx}>
                   <label htmlFor={`fileUpload${idx}`}>
-                    <i className="fa-regular fa-image"></i> Escolher Foto{" "}
-                    {idx + 1}
+                    <Images size={18} /> Escolher Foto {idx + 1}
                   </label>
                   <input
                     type="file"
                     id={`fileUpload${idx}`}
                     accept="image/*"
                     capture="environment"
+                    ref={(el) => (inputRefs.current[idx] = el)}
                     onChange={(e) => handleFileChange(idx, e.target.files[0])}
                   />
                   {f?.preview && (
-                    <img
-                      src={f.preview}
-                      alt={`Prévia ${idx + 1}`}
-                      className="preview"
-                    />
+                    <div className="preview-wrapper">
+                      <img src={f.preview} alt={`Prévia ${idx + 1}`} className="preview" />
+                      <div className="preview-actions">
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Remover"
+                          onClick={() => resetFile(idx)}
+                        >
+                          <Trash size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Trocar Imagem"
+                          onClick={() => inputRefs.current[idx]?.click()}
+                        >
+                          <ArrowClockwise size={18} />
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -269,28 +241,33 @@ export default function UploadPage() {
 
             {uploading && (
               <div className="progress-bar">
-                <div
-                  className="progress"
-                  style={{ width: `${progress}%` }}
-                ></div>
+                <div className="progress" style={{ width: `${progress}%` }}></div>
               </div>
             )}
 
-            <button type="submit" disabled={uploading}>
-              {uploading ? (
-                <>
-                  <i className="fa-solid fa-spinner fa-spin"></i> Enviando...
-                </>
-              ) : (
-                <>
-                  <i className="fa-solid fa-paper-plane"></i> Enviar
-                </>
-              )}
-            </button>
+            <div className="actions">
+              <button type="submit" disabled={uploading}>
+                {uploading ? (
+                  <>
+                    <Spinner size={20} className="spin" /> Enviando...
+                  </>
+                ) : (
+                  <>
+                    <PaperPlaneTilt size={20} /> Enviar
+                  </>
+                )}
+              </button>
+
+              <button type="button" className="clear-btn" onClick={clearAll} disabled={uploading}>
+                <Trash size={18} /> Limpar
+              </button>
+            </div>
           </form>
 
           {message.text && (
-            <p className={`message ${message.type}`}>{message.text}</p>
+            <p className={`message ${message.type}`}>
+              {renderIcon(message.type)} {message.text}
+            </p>
           )}
         </div>
       </main>
