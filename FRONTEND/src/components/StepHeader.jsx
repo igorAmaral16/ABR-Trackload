@@ -2,7 +2,7 @@ import { FaFileUpload } from 'react-icons/fa';
 
 export default function StepHeader({ step }) {
   const steps = ['Conferência', 'Carga', 'Canhoto', 'Confirmação'];
-  const progress = (step / 3) * 100;
+  const progress = (step / 4) * 100;
 
   return (
     <div className="step-header">

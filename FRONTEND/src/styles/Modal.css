@@ -1,0 +1,91 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-box {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  animation: slideUp 0.25s ease;
+}
+
+.modal-box img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.modal-box.confirm {
+  padding: 1.8rem;
+}
+
+.modal-box.confirm h3 {
+  color: var(--primary);
+  font-size: 1.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.modal-box.confirm p {
+  font-size: 0.95rem;
+  color: #444;
+  margin-bottom: 1.4rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.doc-edit-input {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 1rem;
+  margin: 1rem 0 1.2rem;
+  text-align: center;
+}
+
+.doc-edit-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 150, 230, 0.15);
+  outline: none;
+}
+
+
+@media (max-width: 480px) {
+  .modal-box {
+    padding: 1.5rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}
