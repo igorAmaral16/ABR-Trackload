@@ -1,16 +1,14 @@
 import { Routes, Route } from 'react-router-dom';
 import UploadFlow from './pages/UploadFlow';
-// import UploadPage from './pages/UploadPage.jsx';
-// import ConsultaPage from './pages/ConsultaPage.jsx';
-// import HomePage from './pages/HomePage.jsx';
+import Dashboard from './pages/Dashboard';
+import ConsultaPage from './pages/ConsultaPage';
 
 export default function App() {
   return (
     <Routes>
-      {/* <Route path="/" element={<UploadPage />} />
+      <Route path="/upload" element={<UploadFlow />} />
       <Route path="/consulta" element={<ConsultaPage />} />
-      <Route path="/home" element={<HomePage />} /> */}
-      <Route path="/" element={<UploadFlow />} />
+      <Route path="/" element={<Dashboard />} />
     </Routes>
   );
 }

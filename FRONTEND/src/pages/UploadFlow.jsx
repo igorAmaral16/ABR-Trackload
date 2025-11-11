@@ -1,16 +1,16 @@
 import { useEffect, useState, useRef } from "react";
-import { get, set, del, clear } from "idb-keyval";
+import { useNavigate } from "react-router-dom";
+import { get, set, clear } from "idb-keyval";
 import StepConferencia from "./StepConferencia";
 import StepCarga from "./StepCarga";
 import StepCanhoto from "./StepCanhoto";
 import StepHeader from "../components/StepHeader";
 import Modal from "../components/Modal";
-import Logo from "../assets/LogoAbr.png";
+import Header from "../components/Header";
 import "../styles/UploadPage.css";
 import { FaCheckCircle, FaRedoAlt, FaEdit } from "react-icons/fa";
 
 export default function UploadFlow() {
-  // 🔹 Estados
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState(1);
   const [documentNumber, setDocumentNumber] = useState("");
@@ -23,15 +23,15 @@ export default function UploadFlow() {
   const [toastVisible, setToastVisible] = useState(false);
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
+  const navigate = useNavigate();
 
-  // 🔸 Etapa 1 — Hidratar do IndexedDB antes de renderizar
+  // 🔹 Restaurar dados do IndexedDB
   useEffect(() => {
     const hydrate = async () => {
       try {
         const savedStep = await get("step");
         const savedDoc = await get("documentNumber");
         const savedForm = await get("formData");
-
         if (savedStep) setStep(savedStep);
         if (savedDoc) setDocumentNumber(savedDoc);
         if (savedForm) setFormData(savedForm);
@@ -44,26 +44,23 @@ export default function UploadFlow() {
     hydrate();
   }, []);
 
-  // 🔸 Etapa 2 — Persistir toda vez que mudar
+  // 🔹 Salvar no IndexedDB ao alterar algo
   useEffect(() => {
-    if (!hydrated) return; // evita salvar antes de restaurar
+    if (!hydrated) return;
     set("step", step);
     set("documentNumber", documentNumber);
     set("formData", formData);
   }, [step, documentNumber, formData, hydrated]);
 
-  // 🔸 Máscara do documento
   const formatDoc = (value) => {
     let digits = value.replace(/\D/g, "");
     if (digits.length > 2) digits = digits.slice(0, 2) + "-" + digits.slice(2, 8);
     return digits;
   };
 
-  // 🔸 Navegação
   const handleNext = () => setStep((prev) => prev + 1);
   const handleBack = () => setStep((prev) => prev - 1);
 
-  // 🔸 Limpar seção específica
   const handleClear = (section, field = null) => {
     setFormData((prev) => {
       const updated = { ...prev };
@@ -73,10 +70,9 @@ export default function UploadFlow() {
     });
   };
 
-  // 🔸 Reset total
   const handleReset = () => setConfirmReset(true);
   const confirmResetProcess = async () => {
-    await clear(); // limpa IndexedDB
+    await clear();
     setFormData({ conferencia: null, carga: {}, canhoto: null });
     setDocumentNumber("");
     setStep(1);
@@ -84,7 +80,6 @@ export default function UploadFlow() {
     setConfirmReset(false);
   };
 
-  // 🔸 Substituição de imagem
   const handleReplaceImage = (e) => {
     const file = e.target.files[0];
     if (!file || !modalData) return;
@@ -99,7 +94,6 @@ export default function UploadFlow() {
     setModalData(null);
   };
 
-  // 🔸 Editar número do documento
   const handleEditDoc = () => setEditDocModal(true);
   const handleSaveDoc = () => {
     const newValue = formatDoc(docInputRef.current.value);
@@ -112,7 +106,6 @@ export default function UploadFlow() {
     setFeedback({ type: "success", text: "Número atualizado." });
   };
 
-  // 🔸 Upload final + limpeza total
   const handleConfirmUpload = async () => {
     if (!/^[0-9]{2}-[0-9]{6}$/.test(documentNumber)) {
       setFeedback({ type: "error", text: "Formato inválido. Use XX-XXXXXX." });
@@ -136,7 +129,6 @@ export default function UploadFlow() {
         body: data,
       });
 
-
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.message || "Falha no upload.");
 
@@ -157,7 +149,6 @@ export default function UploadFlow() {
     }
   };
 
-  // 🔸 Previews
   const renderPreview = (file, label, section, field) => {
     if (!file) return null;
     const url = URL.createObjectURL(file);
@@ -181,7 +172,6 @@ export default function UploadFlow() {
     );
   };
 
-  // 🔸 Tela de revisão final
   const renderSummary = () => (
     <div className="summary-container">
       <h1>Etapa 4 — Revisar e Confirmar Envio</h1>
@@ -219,15 +209,11 @@ export default function UploadFlow() {
     </div>
   );
 
-  // 🔹 Evita renderizar antes da hidratação
   if (!hydrated) return <p style={{ textAlign: "center" }}>Carregando dados salvos...</p>;
 
   return (
     <div className="upload-page">
-      <header className="header-container">
-        <img src={Logo} alt="Logo ABR" id="logo" />
-      </header>
-
+      <Header />
       <main className="main-container">
         <div className="container">
           <StepHeader step={step} />
