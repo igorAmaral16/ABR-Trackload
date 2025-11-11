@@ -131,10 +131,11 @@ export default function UploadFlow() {
       });
       if (formData.canhoto) data.append("canhoto", formData.canhoto);
 
-      const res = await fetch("http://localhost:3000/api/upload", {
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/upload", {
         method: "POST",
         body: data,
       });
+
 
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.message || "Falha no upload.");
