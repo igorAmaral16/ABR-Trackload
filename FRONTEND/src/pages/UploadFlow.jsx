@@ -1,3 +1,4 @@
+// src/pages/UploadFlow.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { get, set, clear } from "idb-keyval";
@@ -6,21 +7,39 @@ import StepCarga from "./StepCarga";
 import StepCanhoto from "./StepCanhoto";
 import StepHeader from "../components/StepHeader";
 import Modal from "../components/Modal";
+import ModalConfirmacao from "../components/ModalConfirmacao";
 import Header from "../components/Header";
 import "../styles/UploadPage.css";
-import { FaCheckCircle, FaRedoAlt, FaEdit } from "react-icons/fa";
+import { FaCheckCircle, FaRedoAlt, FaEdit, FaTimes } from "react-icons/fa";
 
 export default function UploadFlow() {
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState(1);
   const [documentNumber, setDocumentNumber] = useState("");
-  const [formData, setFormData] = useState({ conferencia: null, carga: {}, canhoto: null });
+  const [formData, setFormData] = useState({
+    conferencia: null,
+    carga: {},
+    canhoto: null,
+  });
+
   const [modalData, setModalData] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [editDocModal, setEditDocModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
+
   const [feedback, setFeedback] = useState(null);
-  const [toastVisible, setToastVisible] = useState(false);
+
+  // Modal 1: confirmar envio?
+  const [showConfirmEnvioModal, setShowConfirmEnvioModal] = useState(false);
+
+  // Modal 2: envio preparado (com toast de desfazer)
+  const [showEnvioPreparadoModal, setShowEnvioPreparadoModal] = useState(false);
+
+  // Toast verde com opção de desfazer
+  const [showUndoToast, setShowUndoToast] = useState(false);
+
+  // Envio real (chamada ao backend) em andamento
+  const [isSubmittingUpload, setIsSubmittingUpload] = useState(false);
+
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
   const navigate = useNavigate();
@@ -54,7 +73,8 @@ export default function UploadFlow() {
 
   const formatDoc = (value) => {
     let digits = value.replace(/\D/g, "");
-    if (digits.length > 2) digits = digits.slice(0, 2) + "-" + digits.slice(2, 8);
+    if (digits.length > 2)
+      digits = digits.slice(0, 2) + "-" + digits.slice(2, 8);
     return digits;
   };
 
@@ -71,6 +91,7 @@ export default function UploadFlow() {
   };
 
   const handleReset = () => setConfirmReset(true);
+
   const confirmResetProcess = async () => {
     await clear();
     setFormData({ conferencia: null, carga: {}, canhoto: null });
@@ -95,10 +116,14 @@ export default function UploadFlow() {
   };
 
   const handleEditDoc = () => setEditDocModal(true);
+
   const handleSaveDoc = () => {
     const newValue = formatDoc(docInputRef.current.value);
     if (!/^[0-9]{2}-[0-9]{6}$/.test(newValue)) {
-      setFeedback({ type: "error", text: "Formato inválido. Use XX-XXXXXX." });
+      setFeedback({
+        type: "error",
+        text: "Formato inválido. Use XX-XXXXXX.",
+      });
       return;
     }
     setDocumentNumber(newValue);
@@ -106,48 +131,111 @@ export default function UploadFlow() {
     setFeedback({ type: "success", text: "Número atualizado." });
   };
 
-  const handleConfirmUpload = async () => {
+  // 🔹 Abrir modal de confirmação antes do envio
+  const handleOpenConfirmEnvioModal = () => {
     if (!/^[0-9]{2}-[0-9]{6}$/.test(documentNumber)) {
-      setFeedback({ type: "error", text: "Formato inválido. Use XX-XXXXXX." });
+      setFeedback({
+        type: "error",
+        text: "Formato inválido. Use XX-XXXXXX.",
+      });
       return;
     }
+    setShowConfirmEnvioModal(true);
+  };
+
+  // 🔹 Usuário clicou em "Continuar" no primeiro modal
+  const handleConfirmEnvioContinua = () => {
+    setShowConfirmEnvioModal(false);
+    // Aqui NÃO envia ainda.
+    setShowEnvioPreparadoModal(true);
+    setShowUndoToast(true);
+    setFeedback(null);
+  };
+
+  // 🔹 Usuário clicou em "Cancelar" no primeiro modal
+  const handleConfirmEnvioCancela = () => {
+    setShowConfirmEnvioModal(false);
+  };
+
+  // 🔹 Desfazer no toast → cancela tudo antes de enviar
+  const handleUndoUpload = () => {
+    if (isSubmittingUpload) return;
+    setShowUndoToast(false);
+    setShowEnvioPreparadoModal(false);
+    setFeedback({
+      type: "warning",
+      text: "Envio cancelado. Revise as informações e tente novamente se necessário.",
+    });
+  };
+
+  // 🔹 Envio real para o backend (chamado só quando o usuário “confirma de verdade”)
+  const commitUpload = async (action) => {
+    if (isSubmittingUpload) return;
+
+    setIsSubmittingUpload(true);
+    setShowUndoToast(false); // não faz mais sentido desfazer depois daqui
 
     try {
-      setUploading(true);
-      setFeedback({ type: "warning", text: "Enviando arquivos..." });
+      // validação extra por segurança
+      if (!/^[0-9]{2}-[0-9]{6}$/.test(documentNumber)) {
+        setFeedback({
+          type: "error",
+          text: "Formato inválido. Use XX-XXXXXX.",
+        });
+        setIsSubmittingUpload(false);
+        setShowEnvioPreparadoModal(false);
+        return;
+      }
 
       const data = new FormData();
       data.append("documentNumber", documentNumber);
-      if (formData.conferencia) data.append("conferencia", formData.conferencia);
+
+      if (formData.conferencia)
+        data.append("conferencia", formData.conferencia);
+
       Object.entries(formData.carga || {}).forEach(([key, file]) => {
         if (file) data.append(key, file);
       });
+
       if (formData.canhoto) data.append("canhoto", formData.canhoto);
 
-      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/upload", {
-        method: "POST",
-        body: data,
-      });
+      const res = await fetch(
+        import.meta.env.VITE_BACKEND_URL + "/upload",
+        {
+          method: "POST",
+          body: data,
+        }
+      );
 
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.message || "Falha no upload.");
 
-      setToastVisible(true);
-      setFeedback({ type: "success", text: "Upload concluído!" });
+      // Sucesso: limpa tudo e redireciona
+      await confirmResetProcess();
+      setShowEnvioPreparadoModal(false);
+      setIsSubmittingUpload(false);
 
-      setTimeout(async () => {
-        setToastVisible(false);
-        await confirmResetProcess();
-      }, 2500);
+      if (action === "consultar") {
+        navigate("/documentos");
+      } else {
+        // fechar modal, fechar toast, redirecionar para "/"
+        navigate("/");
+      }
     } catch (err) {
       const msg = err.message.includes("Failed to fetch")
         ? "Erro de conexão com o servidor."
         : err.message;
       setFeedback({ type: "error", text: msg });
-    } finally {
-      setUploading(false);
+      setIsSubmittingUpload(false);
+      setShowEnvioPreparadoModal(false);
     }
   };
+
+  // 🔹 Ações que disparam o commit
+  const handleEnvioCloseModal = () => commitUpload("close");
+  const handleEnvioToastClose = () => commitUpload("close");
+  const handleConsultarDocumentos = () => commitUpload("consultar");
+  const handleNovaCarga = () => commitUpload("nova");
 
   const renderPreview = (file, label, section, field) => {
     if (!file) return null;
@@ -175,18 +263,40 @@ export default function UploadFlow() {
   const renderSummary = () => (
     <div className="summary-container">
       <h1>Etapa 4 — Revisar e Confirmar Envio</h1>
+
       <div className="doc-edit">
-        <div className="doc-edit-header">
-          <label htmlFor="document-number">Número do Documento</label>
-          <button className="edit-btn" onClick={handleEditDoc}>
+        <label
+          htmlFor="document-number-view"
+          className="doc-edit-label"
+        >
+          Número do Documento
+        </label>
+
+        <div className="doc-edit-row">
+          <div
+            id="document-number-view"
+            className="doc-edit-value"
+          >
+            {documentNumber || "—"}
+          </div>
+
+          <button
+            type="button"
+            className="edit-btn doc-edit-btn"
+            onClick={handleEditDoc}
+          >
             <FaEdit />
           </button>
         </div>
-        <div className="doc-edit-value">{documentNumber || "—"}</div>
       </div>
 
       <div className="preview-grid">
-        {renderPreview(formData.conferencia, "Conferência", "conferencia", null)}
+        {renderPreview(
+          formData.conferencia,
+          "Conferência",
+          "conferencia",
+          null
+        )}
         {renderPreview(formData.carga?.placa, "Placa", "carga", "placa")}
         {renderPreview(formData.carga?.carga1, "Carga 1", "carga", "carga1")}
         {renderPreview(formData.carga?.carga2, "Carga 2", "carga", "carga2")}
@@ -199,17 +309,28 @@ export default function UploadFlow() {
         </button>
         <button
           className="primary-btn confirm-btn"
-          onClick={handleConfirmUpload}
-          disabled={uploading}
+          type="button"
+          onClick={handleOpenConfirmEnvioModal}
+          disabled={isSubmittingUpload}
         >
-          {uploading ? "Enviando..." : <>Confirmar Envio <FaCheckCircle /></>}
+          {isSubmittingUpload ? (
+            "Enviando..."
+          ) : (
+            <>
+              Confirmar Envio <FaCheckCircle />
+            </>
+          )}
         </button>
       </div>
-      {feedback && <p className={`feedback ${feedback.type}`}>{feedback.text}</p>}
+
+      {feedback && (
+        <p className={`feedback ${feedback.type}`}>{feedback.text}</p>
+      )}
     </div>
   );
 
-  if (!hydrated) return <p style={{ textAlign: "center" }}>Carregando dados salvos...</p>;
+  if (!hydrated)
+    return <p style={{ textAlign: "center" }}>Carregando dados salvos...</p>;
 
   return (
     <div className="upload-page">
@@ -248,13 +369,30 @@ export default function UploadFlow() {
         </div>
       </main>
 
-      {toastVisible && (
-        <div className="upload-toast">
+      {/* Toast verde com opção de desfazer */}
+      {showUndoToast && (
+        <div className="upload-toast undo-toast">
           <FaCheckCircle className="icon" />
-          <span>Upload enviado com sucesso!</span>
+          <span>Envio preparado. Você pode desfazer antes de concluir.</span>
+          <button
+            type="button"
+            className="toast-action"
+            onClick={handleUndoUpload}
+          >
+            Desfazer
+          </button>
+          <button
+            type="button"
+            className="toast-close"
+            onClick={handleEnvioToastClose}
+            aria-label="Concluir envio"
+          >
+            <FaTimes />
+          </button>
         </div>
       )}
 
+      {/* Modal de visualização/edição de imagem */}
       {modalData && (
         <Modal
           modalData={modalData}
@@ -264,6 +402,7 @@ export default function UploadFlow() {
         />
       )}
 
+      {/* Modal para editar número do documento */}
       {editDocModal && (
         <Modal
           title="Editar Número do Documento"
@@ -275,6 +414,7 @@ export default function UploadFlow() {
         />
       )}
 
+      {/* Modal de confirmação de reset geral */}
       {confirmReset && (
         <Modal
           isConfirm
@@ -284,6 +424,27 @@ export default function UploadFlow() {
           onClose={() => setConfirmReset(false)}
         />
       )}
+
+      {/* Modal 1: Confirmar envio? */}
+      {showConfirmEnvioModal && (
+        <Modal
+          isConfirm
+          title="Confirmar Envio"
+          message="Deseja continuar com o envio deste documento e das imagens?"
+          onConfirm={handleConfirmEnvioContinua}
+          onClose={handleConfirmEnvioCancela}
+        />
+      )}
+
+      {/* Modal 2: Envio preparado (com opções) */}
+      <ModalConfirmacao
+        isOpen={showEnvioPreparadoModal}
+        documentNumber={documentNumber}
+        isSubmitting={isSubmittingUpload}
+        onClose={handleEnvioCloseModal}
+        onConsultar={handleConsultarDocumentos}
+        onNovaCarga={handleNovaCarga}
+      />
     </div>
   );
 }

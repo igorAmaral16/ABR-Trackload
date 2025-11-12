@@ -1,37 +1,58 @@
+// src/components/FileInput.jsx
 import { useRef } from "react";
-import { FaUpload, FaTimes } from "react-icons/fa";
+import { FaImage, FaTrash } from "react-icons/fa";
 
-export default function FileInput({ label, onChange, onClear, fileType }) {
+export default function FileInput({
+  label,
+  fileType = "default",
+  onChange,
+  onClear,
+}) {
   const inputRef = useRef(null);
+  const isImage = fileType === "foto";
 
-  const handleClear = () => {
-    if (inputRef.current) inputRef.current.value = "";
-    onClear();
+  const handleClick = () => {
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
   };
 
   return (
     <div className="file-input">
-      <label className="file-label">{label}</label>
-      <div className="file-actions">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={onChange}
-        />
+      <label className="file-input-label">{label}</label>
+
+      <button
+        type="button"
+        className="file-input-btn"
+        onClick={handleClick}
+      >
+        <FaImage />
+        <span>Escolher da galeria</span>
+      </button>
+
+      {onClear && (
         <button
           type="button"
-          className="clear-btn"
-          onClick={handleClear}
-          aria-label={`Limpar ${label}`}
+          className="file-input-clear"
+          onClick={onClear}
         >
-          <FaTimes /> Limpar
+          <FaTrash /> Remover
         </button>
-      </div>
-      <div className="file-hint">
-        <FaUpload /> Selecione uma {fileType || "imagem"}.
-      </div>
+      )}
+
+      {/* Input real, escondido, sem capture (não força câmera) */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={isImage ? "image/*" : undefined}
+        // NÃO coloque "capture" aqui
+        onChange={onChange}
+        style={{ display: "none" }}
+      />
+
+      <p className="file-input-hint">
+        Toque em “Escolher da galeria” para usar uma foto já existente.
+      </p>
     </div>
   );
 }

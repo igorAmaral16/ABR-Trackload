@@ -74,7 +74,7 @@ export default function StepCarga({
       </p>
 
       <FileInput
-        label="Foto da Placa"
+        label="Foto da Placa do Transporte"
         fileType="foto"
         onChange={(e) =>
           handleFileChange("placa", e.target.files[0], "da Placa")
@@ -83,7 +83,7 @@ export default function StepCarga({
       />
 
       <FileInput
-        label="Primeira Foto da Carga"
+        label="Primeira Foto da Carga (Dentro do transporte)"
         fileType="foto"
         onChange={(e) =>
           handleFileChange("carga1", e.target.files[0], "da Primeira Carga")
@@ -92,7 +92,7 @@ export default function StepCarga({
       />
 
       <FileInput
-        label="Segunda Foto da Carga"
+        label="Segunda Foto da Carga (Dentro do transporte)"
         fileType="foto"
         onChange={(e) =>
           handleFileChange("carga2", e.target.files[0], "da Segunda Carga")

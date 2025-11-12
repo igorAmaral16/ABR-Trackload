@@ -27,7 +27,7 @@ body {
   background: var(--white);
   border-radius: var(--radius);
   padding: 2.2rem;
-  margin: 2rem auto;
+  margin: 9rem auto;
   width: 90%;
   max-width: 520px;
   box-shadow: var(--shadow);
@@ -365,6 +365,56 @@ button:disabled {
   color: #a1190f;
 }
 
+/* ======== DOC EDIT (RESUMO DOCUMENTO) ======== */
+
+.doc-edit {
+  width: 100%;
+  text-align: left;
+}
+
+.doc-edit-label {
+  display: block;
+  font-weight: 500;
+  color: var(--text);
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.doc-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.doc-edit-value {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--primary);
+  background: #f9fbfd;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  box-shadow: 0 0 0 2px rgba(0, 150, 230, 0.08);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.doc-edit-btn {
+  padding: 0.7rem 0.8rem;
+  border-radius: 50%;
+  background: #f0f4f8;
+  color: var(--primary-dark);
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.doc-edit-btn:hover {
+  background: #e4f2fb;
+  color: var(--accent);
+}
+
 /* ======== BOTÃO DE EDIÇÃO E REINÍCIO ======== */
 .preview-info {
   display: flex;
@@ -409,41 +459,254 @@ button:disabled {
 /* ======== TOAST DE SUCESSO ======== */
 .upload-toast {
   position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--primary);
+  bottom: 20px;
+  left: 20px;
+  background: #1b5e20; /* verde */
   color: var(--white);
-  padding: 1rem 1.5rem;
+  padding: 0.8rem 1rem;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display: flex;
   align-items: center;
   gap: 0.6rem;
   font-weight: 600;
-  animation: toastSlide 0.4s ease forwards, toastFadeOut 0.4s ease 2.6s forwards;
-  z-index: 1000;
+  animation: toastSlide 0.3s ease forwards;
+  z-index: 1200; /* acima do modal */
 }
 
 .upload-toast .icon {
   font-size: 1.2rem;
 }
 
-@keyframes toastSlide {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -10px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
+/* Toast específico de desfazer */
+.undo-toast {
+  background: #1b5e20;
+}
+
+.toast-action {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: none;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--white);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toast-action:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.toast-close {
+  background: transparent;
+  border: none;
+  color: var(--white);
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  color: #e0e0e0;
+}
+
+/* Em telas muito pequenas, encostar mais na borda */
+@media (max-width: 480px) {
+  .upload-toast {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    border-radius: 8px;
+    justify-content: space-between;
+    font-size: 0.85rem;
   }
 }
 
-@keyframes toastFadeOut {
-  to {
-    opacity: 0;
-    transform: translate(-50%, -20px);
+/* ========== MODAL DE CONFIRMAÇÃO DE UPLOAD ========== */
+
+.overlay-modal-confirmacao {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.container-modal-confirmacao {
+  position: relative;
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.8rem 1.8rem 1.5rem;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: fadeIn 0.25s ease;
+}
+
+.close-modal-confirmacao {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 0.3rem;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.close-modal-confirmacao:hover {
+  background: #f2f4f7;
+  color: #555;
+}
+
+.header-modal-confirmacao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.icon-modal-confirmacao {
+  font-size: 2.4rem;
+  color: var(--primary);
+}
+
+.title-modal-confirmacao {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+}
+
+.subtitle-modal-confirmacao {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0;
+}
+
+.body-modal-confirmacao {
+  margin-bottom: 1.2rem;
+}
+
+.text-modal-confirmacao {
+  font-size: 0.95rem;
+  color: #444;
+  margin: 0;
+}
+
+.buttons-modal-confirmacao {
+  display: flex;
+  flex-direction: row;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.btn-modal-confirmacao {
+  flex: 1;
+  border-radius: var(--radius);
+  padding: 0.8rem 0.6rem;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary-modal-confirmacao {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.btn-primary-modal-confirmacao:hover {
+  background: var(--primary-dark);
+}
+
+.btn-secondary-modal-confirmacao {
+  background: #f0f4f8;
+  color: var(--primary-dark);
+}
+
+.btn-secondary-modal-confirmacao:hover {
+  background: #e4f2fb;
+}
+
+.session-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-overlay-content {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.8rem;
+  box-shadow: var(--shadow);
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+  font-size: 0.95rem;
+}
+
+.session-overlay-content strong {
+  color: var(--primary);
+}
+
+
+/* Mobile: mantém botão ao lado do "input" ocupando a largura toda com boa usabilidade */
+@media (max-width: 480px) {
+  .doc-edit-row {
+    gap: 0.5rem;
+  }
+
+  .doc-edit-value {
+    font-size: 0.9rem;
+    padding: 0.7rem 0.9rem;
+  }
+
+  .doc-edit-btn {
+    padding: 0.6rem 0.7rem;
+    min-width: 38px;
+    min-height: 38px;
+  }
+}
+
+/* Responsivo para telas menores */
+@media (max-width: 480px) {
+  .container-modal-confirmacao {
+    padding: 1.4rem 1.2rem 1.2rem;
+  }
+
+  .buttons-modal-confirmacao {
+    flex-direction: column;
+  }
+
+  .btn-modal-confirmacao {
+    width: 100%;
+  }
+
+  .title-modal-confirmacao {
+    font-size: 1.1rem;
+  }
+
+  .text-modal-confirmacao {
+    font-size: 0.9rem;
   }
 }
 

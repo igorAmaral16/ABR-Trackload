@@ -17,6 +17,12 @@
   --transition-fast: all 0.15s ease;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+
 /* ==========================================================
    HEADER - Design Profissional com Glass Morphism
    ========================================================== */
@@ -330,47 +336,5 @@
   
   .nav-btn::before {
     display: none;
-  }
-}
-
-/* ========== DARK MODE SUPPORT ========== */
-@media (prefers-color-scheme: dark) {
-  .header-container {
-    background: rgba(26, 26, 26, 0.95);
-    border-bottom-color: #333;
-  }
-  
-  .header-container.scrolled {
-    background: rgba(26, 26, 26, 0.98);
-  }
-  
-  .brand-name {
-    color: var(--accent);
-  }
-  
-  .brand-tagline {
-    color: #ccc;
-  }
-  
-  .nav-btn {
-    color: #e1e1e1;
-  }
-  
-  .nav-btn:hover {
-    background: rgba(0, 150, 230, 0.1);
-    color: var(--accent);
-  }
-  
-  .mobile-nav-container {
-    background: rgba(26, 26, 26, 0.98);
-    border-top-color: #333;
-  }
-  
-  .mobile-menu-btn {
-    color: #e1e1e1;
-  }
-  
-  .mobile-menu-btn:hover {
-    color: var(--accent);
   }
 }
