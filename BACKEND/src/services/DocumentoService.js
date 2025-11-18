@@ -6,13 +6,19 @@ require('dotenv').config();
 const DB_DSN = process.env.DB_DSN;
 const DB_USER = process.env.DB_USER;
 const DB_PASS = process.env.DB_PASS;
-const USE_DB2 =
-  (process.env.USE_DB2 || 'true').toLowerCase() === 'true';
+const USE_DB2 = (process.env.USE_DB2 || 'true').toLowerCase() === 'true';
+
+// Config de tabela e colunas via .env
+const DB_SCHEMA = process.env.DB_SCHEMA || 'SICGA54F04';
+const DB_TABLE = process.env.DB_TABLE || 'GZFFAC';
+const DB_COL_SERIE = process.env.DB_COL_SERIE || 'GCF001';
+const DB_COL_NUMERO = process.env.DB_COL_NUMERO || 'GCF002';
+const DB_COL_CLIENTE = process.env.DB_COL_CLIENTE || 'GCF005';
+const DB_COL_DATA = process.env.DB_COL_DATA || 'GCF018';
+const DB_SERIE_FIXA = process.env.DB_SERIE_FIXA || '4';
 
 // Raiz das imagens (igual Upload_Sistema do PHP)
-const BASE_UPLOAD_PATH =
-  process.env.BASE_UPLOAD_PATH ||
-  '\\\\10.0.0.20\\abr\\publico\\Documentos\\Upload_Sistema';
+const BASE_UPLOAD_PATH = process.env.BASE_UPLOAD_PATH;
 
 const PUBLIC_BASE_URL =
   process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
@@ -152,7 +158,7 @@ async function getImagesIndex() {
 }
 
 /**
- * Lógica igual ao PHP: consulta em SICGA54F04.GZFFAC via ODBC (DSN=AS400),
+ * Lógica igual ao PHP: consulta em DB_SCHEMA.DB_TABLE via ODBC,
  * mas enriquecendo com as imagens vindas do índice.
  */
 async function listarDocumentosViaBanco({ nota, data }) {
@@ -160,9 +166,7 @@ async function listarDocumentosViaBanco({ nota, data }) {
     throw new Error('DB_DSN não definido no .env');
   }
 
-  const connStr = `DSN=${DB_DSN};UID=${DB_USER || ''};PWD=${
-    DB_PASS || ''
-  }`;
+  const connStr = `DSN=${DB_DSN};UID=${DB_USER || ''};PWD=${DB_PASS || ''}`;
 
   const connection = await odbc.connect(connStr);
   const imgIndex = await getImagesIndex();
@@ -180,42 +184,51 @@ async function listarDocumentosViaBanco({ nota, data }) {
         const numero = numeroRaw.replace(/^0+/, '') || '0';
 
         if (/^\d+$/.test(serie)) {
-          where.push(`GCF001 = ${serie}`);
+          where.push(`${DB_COL_SERIE} = ${serie}`);
         }
         if (/^\d+$/.test(numero)) {
-          where.push(`GCF002 = ${numero}`);
+          where.push(`${DB_COL_NUMERO} = ${numero}`);
         }
       }
       data = '';
     } else if (data) {
       const as400Date = data.replace(/-/g, '');
       if (/^\d{8}$/.test(as400Date)) {
-        where.push(`GCF018 = ${as400Date}`);
+        where.push(`${DB_COL_DATA} = ${as400Date}`);
       }
     }
 
-    where.push('GCF001 = 4');
+    // Filtro de série fixa (igual GCF001 = 4 antes)
+    if (DB_SERIE_FIXA && /^\d+$/.test(DB_SERIE_FIXA)) {
+      where.push(`${DB_COL_SERIE} = ${DB_SERIE_FIXA}`);
+    }
 
-    let sql =
-      'SELECT GCF001, GCF002, GCF005, GCF018 FROM SICGA54F04.GZFFAC';
+    let sql = `
+      SELECT
+        ${DB_COL_SERIE}   AS SERIE,
+        ${DB_COL_NUMERO}  AS NUMERO,
+        ${DB_COL_CLIENTE} AS CLIENTE,
+        ${DB_COL_DATA}    AS DATA_EMISSAO
+      FROM ${DB_SCHEMA}.${DB_TABLE}
+    `;
 
     if (where.length) {
       sql += ' WHERE ' + where.join(' AND ');
     }
 
-    sql += ' ORDER BY GCF018 DESC';
+    sql += ' ORDER BY ' + DB_COL_DATA + ' DESC';
 
     const result = await connection.query(sql);
 
     const documentos = [];
 
     for (const row of result) {
-      const serie = String(row.GCF001 ?? '').trim();
-      const numero = String(row.GCF002 ?? '').trim();
-      const cliente = String(row.GCF005 ?? '').trim();
-      const dataRaw = String(row.GCF018 ?? '').trim();
+      const serie = String(row.SERIE ?? '').trim();
+      const numero = String(row.NUMERO ?? '').trim();
+      const cliente = String(row.CLIENTE ?? '').trim();
+      const dataRaw = String(row.DATA_EMISSAO ?? '').trim();
 
-      console.log("DATA EXATA: " + dataRaw);
+      console.log('DATA EXATA: ' + dataRaw);
 
       if (!numero || !dataRaw) continue;
 
