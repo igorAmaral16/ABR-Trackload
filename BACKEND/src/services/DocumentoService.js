@@ -215,6 +215,8 @@ async function listarDocumentosViaBanco({ nota, data }) {
       const cliente = String(row.GCF005 ?? '').trim();
       const dataRaw = String(row.GCF018 ?? '').trim();
 
+      console.log("DATA EXATA: " + dataRaw);
+
       if (!numero || !dataRaw) continue;
 
       const nf = formatDocumento(serie, numero);

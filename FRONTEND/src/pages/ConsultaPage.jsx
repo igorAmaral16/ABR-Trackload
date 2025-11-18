@@ -8,58 +8,64 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
+import formatDate, { parseToDate } from "../utils/formatDate";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import "../styles/ConsultaDocumentos.css";
 
 export default function ConsultaDocumentos() {
-  const [search, setSearch] = useState("");
-  const [filterDate, setFilterDate] = useState(
-    () => new Date().toISOString().slice(0, 10) // default hoje, igual PHP
-  );
-  const [documents, setDocuments] = useState([]);
+  // cache + data
+  const [documentsCache, setDocumentsCache] = useState([]); // full cached set
+  const [documents, setDocuments] = useState([]); // visible set (after filters)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Filtros adicionais (somente no front)
+  // Filtros: use pending inputs and apply to cached data on demand
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortOrder, setSortOrder] = useState("desc"); // "asc" | "desc"
-  const [onlyComplete, setOnlyComplete] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [pendingFilterDate, setPendingFilterDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [pendingSortOrder, setPendingSortOrder] = useState("desc");
+  const [pendingOnlyComplete, setPendingOnlyComplete] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState({ nota: "", data: "", sortOrder: "desc", onlyComplete: false });
 
   // Modal de preview
   const [previewDoc, setPreviewDoc] = useState(null);
   const [activePreviewTab, setActivePreviewTab] = useState("conferencia");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  // zoom state for modal
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = () => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
+  const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)));
+  const resetZoom = () => setZoom(1);
 
   const navigate = useNavigate();
 
-  // Carrega documentos da API sempre que nota ou data mudarem
+  // On first mount: try to load cache from localStorage; if missing, fetch once and cache
   useEffect(() => {
-    async function loadDocuments() {
+    const CACHE_KEY = "documentos_cache_v1";
+    const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+
+    async function fetchAndCache() {
       setLoading(true);
       setError("");
-
       try {
-        const params = new URLSearchParams();
-
-        if (search.trim()) {
-          // Se tiver nota, ignora data (igual PHP)
-          params.append("nota", search.trim());
-        } else if (filterDate) {
-          params.append("data", filterDate);
-        }
-
-        const queryString = params.toString();
-        const url = `http://localhost:5000/api/documentos${
-          queryString ? `?${queryString}` : ""
-        }`;
-
+        // try limit param to avoid fetching huge datasets (backend may ignore it)
+        const url = `http://localhost:5000/api/documentos?limit=1000`;
         const res = await fetch(url);
-        if (!res.ok) {
-          throw new Error("Erro na resposta da API");
-        }
+        if (!res.ok) throw new Error("Erro na resposta da API");
         const data = await res.json();
-        setDocuments(data);
+
+        // normalize: ensure array
+        const arr = Array.isArray(data) ? data : [];
+
+        // store cache with timestamp
+        const payload = { ts: Date.now(), data: arr };
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(payload)); } catch (e) { /* ignore storage errors */ }
+
+        setDocumentsCache(arr);
+        // apply default appliedFilters (none) to set documents visible
+        setAppliedFilters({ nota: "", data: "", sortOrder: "desc", onlyComplete: false });
+        setDocuments(arr);
       } catch (err) {
         console.error(err);
         setError("Erro ao carregar documentos.");
@@ -68,8 +74,23 @@ export default function ConsultaDocumentos() {
       }
     }
 
-    loadDocuments();
-  }, [search, filterDate]);
+    try {
+      const raw = localStorage.getItem("documentos_cache_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.ts && (Date.now() - parsed.ts) < CACHE_TTL_MS && Array.isArray(parsed.data)) {
+          setDocumentsCache(parsed.data);
+          setDocuments(parsed.data);
+          setLoading(false);
+          return; // use cache
+        }
+      }
+    } catch (e) {
+      // proceed to fetch
+    }
+
+    fetchAndCache();
+  }, []);
 
   // Fecha modal com ESC e navega com setas
   useEffect(() => {
@@ -151,24 +172,45 @@ export default function ConsultaDocumentos() {
     );
   };
 
-  // Filtros que continuam no front (ordenar + NF completas)
+  // Apply filters client-side from cached data (only when user clicks Aplicar)
   const filteredDocs = useMemo(() => {
-    let result = [...documents];
+    let result = [...documentsCache];
 
-    if (onlyComplete) {
+    // Nota search
+    if (appliedFilters.nota) {
+      const q = appliedFilters.nota.toLowerCase();
+      result = result.filter((d) => String(d.nf || "").toLowerCase().includes(q));
+    }
+
+    // Data filter (if provided)
+    if (appliedFilters.data) {
+      result = result.filter((d) => d.data && d.data.startsWith(appliedFilters.data));
+    }
+
+    // onlyComplete
+    if (appliedFilters.onlyComplete) {
       result = result.filter((doc) => isDocComplete(doc));
     }
 
-    // Ordenação por data
+    // Sort by date
     result.sort((a, b) => {
-      const dateA = new Date(a.data);
-      const dateB = new Date(b.data);
-      if (sortOrder === "asc") return dateA - dateB;
-      return dateB - dateA;
+      const da = parseToDate(a.data);
+      const db = parseToDate(b.data);
+      if (appliedFilters.sortOrder === "asc") return da - db;
+      return db - da;
     });
 
     return result;
-  }, [documents, onlyComplete, sortOrder]);
+  }, [documentsCache, appliedFilters]);
+
+  // Pagination state: default 20 rows
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const totalPages = Math.max(1, Math.ceil(filteredDocs.length / pageSize));
+  const pagedDocs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredDocs.slice(start, start + pageSize);
+  }, [filteredDocs, page, pageSize]);
 
   const renderImagesPreview = () => {
     if (!previewDoc) return null;
@@ -189,54 +231,34 @@ export default function ConsultaDocumentos() {
 
     return (
       <>
-        <div className="preview-main">
-          <button
-            type="button"
-            className="preview-nav-btn"
-            onClick={handlePrevImage}
-            disabled={list.length <= 1}
-          >
+        <div className="preview-main" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button type="button" className="preview-nav-btn" onClick={handlePrevImage} disabled={list.length <= 1} aria-label="Anterior">
             <FaChevronLeft />
           </button>
 
-          <div className="preview-main-image">
-            <img
-              src={currentSrc}
-              alt={`${activePreviewTab} ${currentIndex + 1}`}
-            />
+          <div className="preview-image-wrap" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+            <img src={currentSrc} alt={`${activePreviewTab} ${currentIndex + 1}`} className="preview-image" style={{ transform: `scale(${zoom})`, transition: 'transform 150ms ease' }} onDoubleClick={() => (zoom === 1 ? zoomIn() : resetZoom())} />
           </div>
 
-          <button
-            type="button"
-            className="preview-nav-btn"
-            onClick={handleNextImage}
-            disabled={list.length <= 1}
-          >
+          <button type="button" className="preview-nav-btn" onClick={handleNextImage} disabled={list.length <= 1} aria-label="Próxima">
             <FaChevronRight />
           </button>
         </div>
 
-        <div className="preview-counter">
-          {list.length > 1
-            ? `${currentIndex + 1} de ${list.length}`
-            : "1 de 1"}
+        <div className="preview-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <div className="preview-counter">{list.length > 1 ? `${currentIndex + 1} de ${list.length}` : '1 de 1'}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="images-btn" onClick={zoomOut} aria-label="Diminuir">-</button>
+            <button type="button" className="images-btn" onClick={resetZoom} aria-label="Resetar">Reset</button>
+            <button type="button" className="images-btn" onClick={zoomIn} aria-label="Aumentar">+</button>
+          </div>
         </div>
 
         {list.length > 1 && (
-          <div className="preview-thumbs">
+          <div className="preview-thumbs" style={{ marginTop: 10 }}>
             {list.map((src, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`preview-thumb ${
-                  idx === currentIndex ? "active" : ""
-                }`}
-                onClick={() => setActiveImageIndex(idx)}
-              >
-                <img
-                  src={src}
-                  alt={`${activePreviewTab} thumb ${idx + 1}`}
-                />
+              <button key={idx} type="button" className={`preview-thumb ${idx === currentIndex ? 'active' : ''}`} onClick={() => setActiveImageIndex(idx)}>
+                <img src={src} alt={`thumb ${idx + 1}`} style={{ width: 90, height: 56, objectFit: 'cover' }} />
               </button>
             ))}
           </div>
@@ -255,12 +277,9 @@ export default function ConsultaDocumentos() {
         {/* Barra de busca (nota) */}
         <div className="search-bar">
           <FaSearch className="search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar por número da NF..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input type="text" placeholder="Buscar por número da NF..." value={pendingSearch} onChange={(e) => setPendingSearch(e.target.value)} />
+          <button type="button" className="images-btn" onClick={() => { setPendingSearch(''); setPendingFilterDate(new Date().toISOString().slice(0,10)); setPendingOnlyComplete(false); setPendingSortOrder('desc'); }}>Limpar</button>
+          <button type="button" className="images-btn" onClick={() => { setFiltersOpen((f) => !f); }}>{filtersOpen ? 'Fechar' : 'Filtros'}</button>
         </div>
 
         {/* Linha dos filtros */}
@@ -274,15 +293,9 @@ export default function ConsultaDocumentos() {
             <span>Filtros</span>
           </button>
           <span className="filters-summary">
-            {sortOrder === "desc"
-              ? "Mais recentes primeiro"
-              : "Mais antigos primeiro"}
-            {search.trim()
-              ? " · Filtrando por NF"
-              : filterDate
-              ? ` · Data ${new Date(filterDate).toLocaleDateString("pt-BR")}`
-              : ""}
-            {onlyComplete ? " · Somente NF completas" : ""}
+            {appliedFilters.sortOrder === 'desc' ? 'Mais recentes primeiro' : 'Mais antigos primeiro'}
+            {appliedFilters.nota ? ' · Filtrando por NF' : appliedFilters.data ? ` · Data ${formatDate(appliedFilters.data)}` : ''}
+            {appliedFilters.onlyComplete ? ' · Somente NF completas' : ''}
           </span>
         </div>
 
@@ -294,12 +307,7 @@ export default function ConsultaDocumentos() {
               <div className="filter-dates">
                 <label>
                   Selecionar
-                  <input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    disabled={search.trim() !== ""}
-                  />
+                  <input type="date" value={pendingFilterDate} onChange={(e) => setPendingFilterDate(e.target.value)} disabled={pendingSearch.trim() !== ''} />
                 </label>
               </div>
             </div>
@@ -308,24 +316,10 @@ export default function ConsultaDocumentos() {
               <span className="filter-label">Ordenar por</span>
               <div className="filter-order">
                 <label>
-                  <input
-                    type="radio"
-                    name="sortOrder"
-                    value="desc"
-                    checked={sortOrder === "desc"}
-                    onChange={() => setSortOrder("desc")}
-                  />
-                  Data (mais recentes primeiro)
+                  <input type="radio" name="sortOrder" value="desc" checked={pendingSortOrder === 'desc'} onChange={() => setPendingSortOrder('desc')} /> Data (mais recentes primeiro)
                 </label>
                 <label>
-                  <input
-                    type="radio"
-                    name="sortOrder"
-                    value="asc"
-                    checked={sortOrder === "asc"}
-                    onChange={() => setSortOrder("asc")}
-                  />
-                  Data (mais antigos primeiro)
+                  <input type="radio" name="sortOrder" value="asc" checked={pendingSortOrder === 'asc'} onChange={() => setPendingSortOrder('asc')} /> Data (mais antigos primeiro)
                 </label>
               </div>
             </div>
@@ -333,13 +327,25 @@ export default function ConsultaDocumentos() {
             <div className="filter-group">
               <span className="filter-label">Integridade</span>
               <label className="filter-checkbox">
-                <input
-                  type="checkbox"
-                  checked={onlyComplete}
-                  onChange={(e) => setOnlyComplete(e.target.checked)}
-                />
+                <input type="checkbox" checked={pendingOnlyComplete} onChange={(e) => setPendingOnlyComplete(e.target.checked)} />
                 Mostrar apenas NF com Conferência, Carga e Canhoto
               </label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button type="button" className="images-btn" onClick={() => {
+                  // apply filters -> close panel and set appliedFilters (client-side only)
+                  setAppliedFilters({ nota: pendingSearch.trim(), data: pendingSearch.trim() ? '' : pendingFilterDate, sortOrder: pendingSortOrder, onlyComplete: pendingOnlyComplete });
+                  setFiltersOpen(false);
+                  setPage(1);
+                }}>Aplicar</button>
+                <button type="button" className="images-btn" onClick={() => {
+                  setPendingSearch(''); setPendingFilterDate(new Date().toISOString().slice(0,10)); setPendingOnlyComplete(false); setPendingSortOrder('desc');
+                }} style={{ background: '#fff' }}>Limpar</button>
+                <button type="button" className="images-btn" onClick={() => {
+                  // refresh cache from server
+                  localStorage.removeItem('documentos_cache_v1');
+                  window.location.reload();
+                }}>Atualizar</button>
+              </div>
             </div>
           </section>
         )}
@@ -364,11 +370,11 @@ export default function ConsultaDocumentos() {
               </thead>
               <tbody>
                 {filteredDocs.length > 0 ? (
-                  filteredDocs.map((doc, idx) => (
+                  pagedDocs.map((doc, idx) => (
                     <tr key={idx}>
                       <td>{doc.nf}</td>
                       <td>
-                        {new Date(doc.data).toLocaleDateString("pt-BR", {
+                        {formatDate(doc.data, {
                           day: "2-digit",
                           month: "2-digit",
                           year: "numeric",
@@ -401,16 +407,24 @@ export default function ConsultaDocumentos() {
                 )}
               </tbody>
             </table>
+            {/* pagination controls - professional/responsive */}
+            <div className="pagination-bar">
+              <div className="pagination-info">Mostrando {pagedDocs.length} de {filteredDocs.length} registros</div>
+              <div className="pagination-actions">
+                <button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>« Primeiro</button>
+                <button className="page-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>‹ Anterior</button>
+                <span className="page-current">Página {page} / {totalPages}</span>
+                <button className="page-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Próxima ›</button>
+                <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>Último »</button>
+                <select className="page-size" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+                  <option value={20}>20 / pág</option>
+                  <option value={50}>50 / pág</option>
+                  <option value={100}>100 / pág</option>
+                </select>
+              </div>
+            </div>
           </div>
         )}
-
-        <button
-          className="voltar-btn"
-          onClick={() => navigate("/upload")}
-          type="button"
-        >
-          <FaArrowLeft /> Voltar para Despachar
-        </button>
       </main>
 
       {/* Modal de preview de imagens */}
