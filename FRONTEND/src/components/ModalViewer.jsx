@@ -1,4 +1,3 @@
-// src/components/ModalViewer.jsx
 import { useEffect, useState } from 'react';
 
 export default function ModalViewer({ isOpen, images, initialIndex = 0, onClose, titulo }) {
@@ -37,7 +36,7 @@ export default function ModalViewer({ isOpen, images, initialIndex = 0, onClose,
       <span className="next" onClick={() => showImage(currentIndex + 1)}>
         &#10095;
       </span>
-      <img className="modal-content" id="modal-img" src={images[currentIndex]} alt={titulo || ''} />
+      <img className="modal-content" id="modal-img" src={images[currentIndex]} alt={titulo || ''} loading="lazy" />
       {titulo && <div className="modal-caption">{titulo}</div>}
     </div>
   );

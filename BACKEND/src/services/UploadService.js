@@ -3,8 +3,7 @@ const fs = require("fs").promises;
 const sharp = require("sharp");
 require("dotenv").config();
 
-// const BASE_UPLOAD_PATH = "\\\\10.0.0.20\\abr\\publico\\Documentos\\Upload_Sistema";
-const BASE_UPLOAD_PATH = "\\\\10.0.0.20\\abr\\publico\\Documentos\\Upload_Sistema";
+const BASE_UPLOAD_PATH = process.env.BASE_UPLOAD_PATH;
 
 const directories = {
   conferencia: path.join(BASE_UPLOAD_PATH, "conferencia"),

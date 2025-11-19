@@ -22,7 +22,67 @@ body {
   padding: 0;
 }
 
-/* ========== CONTAINER PRINCIPAL ========== */
+/* ============================================================
+   WRAPPER NOVAS PÁGINAS (CONFERÊNCIA / CARGA / CANHOTO)
+   Respeitando o layout original do container
+   ============================================================ */
+
+.upload-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.upload-main {
+  padding: 0 1rem 2rem;
+}
+
+.upload-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 2.2rem;
+  margin: 9rem auto;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+/* Título e subtítulo similares ao .container h1 antigo */
+.upload-title {
+  font-size: 1.5rem;
+  color: var(--primary);
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+.upload-subtitle {
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0 0 1.6rem 0;
+  color: #555;
+}
+
+/* Responsivo para o wrapper novo */
+@media (max-width: 768px) {
+  .upload-card {
+    padding: 1.6rem 1.4rem;
+    margin: 7rem auto 1.5rem auto;
+  }
+
+  .upload-title {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .upload-card {
+    padding: 1.4rem 1.1rem;
+    margin: 6.5rem auto 1rem auto;
+  }
+}
+
+/* ========== CONTAINER PRINCIPAL (LEGADO) ========== */
 .container {
   background: var(--white);
   border-radius: var(--radius);
@@ -252,7 +312,7 @@ button:disabled {
 }
 
 /* ============================================================
-   NOVAS SEÇÕES — UPLOADFLOW PREVIEW + CONFIRMAÇÃO FINAL
+   NOVAS SEÇÕES — UPLOADFLOW PREVIEW + CONFIRMAÇÃO FINAL (LEGADO)
    ============================================================ */
 
 .summary-container {
@@ -525,7 +585,92 @@ button:disabled {
   }
 }
 
-/* ========== MODAL DE CONFIRMAÇÃO DE UPLOAD ========== */
+/* ========== NOVO MODAL DE CONFIRMAÇÃO SIMPLES (ENVIAR) ========== */
+
+.send-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+}
+
+.send-confirm-modal {
+  background: var(--white);
+  width: min(420px, 92%);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.6rem 1.3rem;
+}
+
+.send-confirm-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 1.1rem;
+  color: var(--primary-dark);
+}
+
+.send-confirm-text {
+  margin: 0 0 1.2rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.send-confirm-text strong {
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.send-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.send-confirm-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.5rem 0 0.1rem;
+}
+
+.send-confirm-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: #e4f7ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: send-confirm-pop 0.28s ease-out;
+}
+
+.send-confirm-icon {
+  font-size: 1.9rem;
+  color: #1b8a4b;
+}
+
+.send-confirm-success p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+@keyframes send-confirm-pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ========== MODAL DE CONFIRMAÇÃO DE UPLOAD LEGADO ========== */
 
 .overlay-modal-confirmacao {
   position: fixed;
@@ -668,7 +813,6 @@ button:disabled {
   color: var(--primary);
 }
 
-
 /* Mobile: mantém botão ao lado do "input" ocupando a largura toda com boa usabilidade */
 @media (max-width: 480px) {
   .doc-edit-row {
@@ -687,7 +831,7 @@ button:disabled {
   }
 }
 
-/* Responsivo para telas menores */
+/* Responsivo para modal de confirmação */
 @media (max-width: 480px) {
   .container-modal-confirmacao {
     padding: 1.4rem 1.2rem 1.2rem;
@@ -710,7 +854,7 @@ button:disabled {
   }
 }
 
-/* ========== RESPONSIVIDADE ========== */
+/* ========== RESPONSIVIDADE GERAL ========== */
 @media (max-width: 1024px) {
   .container {
     width: 92%;

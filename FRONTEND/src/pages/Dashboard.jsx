@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaTruckLoading, FaSearch } from "react-icons/fa";
+import ModalEscolherTipo from "../components/ModalEscolherTipo";
 import "../styles/Dashboard.css";
 import Logo from "../assets/LogoAbr.png";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [showTipoModal, setShowTipoModal] = useState(false);
 
   return (
     <div className="dashboard-page">
@@ -19,9 +22,10 @@ export default function Dashboard() {
         </p>
 
         <div className="dashboard-options">
+          {/* Abre o modal de escolha de tipo */}
           <button
             className="dashboard-card"
-            onClick={() => navigate("/upload")}
+            onClick={() => setShowTipoModal(true)}
           >
             <div className="icon-container">
               <FaTruckLoading className="icon" />
@@ -42,6 +46,27 @@ export default function Dashboard() {
           </button>
         </div>
       </main>
+
+      {/* Modal para escolher Conferência / Carga / Canhoto */}
+      <ModalEscolherTipo
+        isOpen={showTipoModal}
+        onClose={() => setShowTipoModal(false)}
+        onConferencia={() => {
+          setShowTipoModal(false);
+          // ajuste aqui para a rota/tela que você quiser
+          navigate("/upload/conferencia");
+        }}
+        onCarga={() => {
+          setShowTipoModal(false);
+          // ajuste aqui para a rota/tela que você quiser
+          navigate("/upload/carga");
+        }}
+        onCanhoto={() => {
+          setShowTipoModal(false);
+          // ajuste aqui para a rota/tela que você quiser
+          navigate("/upload/canhoto");
+        }}
+      />
     </div>
   );
 }
