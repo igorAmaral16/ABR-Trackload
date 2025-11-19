@@ -1,4 +1,3 @@
-// src/pages/UploadFlow.jsx
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { get, set, clear } from "idb-keyval";
@@ -216,7 +215,7 @@ export default function UploadFlow() {
       setIsSubmittingUpload(false);
 
       if (action === "consultar") {
-        navigate("/documentos");
+        navigate("/consulta");
       } else {
         // fechar modal, fechar toast, redirecionar para "/"
         navigate("/");
