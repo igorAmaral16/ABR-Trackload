@@ -17,11 +17,11 @@
   --transition-fast: all 0.15s ease;
 }
 
-html, body {
+html,
+body {
   overflow-x: hidden;
   width: 100%;
 }
-
 
 /* ==========================================================
    HEADER - Design Profissional com Glass Morphism
@@ -62,7 +62,7 @@ html, body {
   gap: 0.75rem;
   cursor: pointer;
   transition: var(--transition);
-  padding: 0.25rem; /*Ajuste menu */
+  padding: 0.25rem;
   border-radius: var(--radius);
   flex-shrink: 0;
 }
@@ -102,6 +102,19 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  /* necessário para o indicador */
+}
+
+.nav-indicator {
+  position: absolute;
+  height: 3px;
+  background: var(--primary);
+  bottom: 6px;
+  left: 0;
+  border-radius: 6px;
+  transition: transform 0.22s cubic-bezier(.2, .9, .2, 1), width 0.22s cubic-bezier(.2, .9, .2, 1);
+  pointer-events: none;
 }
 
 .nav-btn {
@@ -129,7 +142,7 @@ html, body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transition: left 0.5s ease;
 }
 
@@ -263,11 +276,11 @@ html, body {
   .header-content {
     padding: 0.75rem 1.5rem;
   }
-  
+
   .brand-text {
     display: none;
   }
-  
+
   .nav-btn {
     padding: 0.65rem 1rem;
     font-size: 0.9rem;
@@ -278,23 +291,23 @@ html, body {
   .desktop-nav {
     display: none;
   }
-  
+
   .mobile-menu-btn {
     display: flex;
   }
-  
+
   .mobile-nav-container {
     display: block;
   }
-  
+
   .header-content {
     padding: 0.75rem 1rem;
   }
-  
+
   #logo {
     height: 42px;
   }
-  
+
   .header-brand:hover {
     transform: none;
   }
@@ -304,21 +317,21 @@ html, body {
   .header-content {
     padding: 0.5rem 1rem;
   }
-  
+
   #logo {
     height: 38px;
   }
-  
+
   .mobile-nav {
     padding: 0.75rem;
   }
-  
+
   .nav-btn {
     padding: 1rem;
     font-size: 1rem;
     justify-content: flex-start;
   }
-  
+
   .nav-icon {
     font-size: 1.2rem;
     min-width: 24px;
@@ -327,13 +340,14 @@ html, body {
 
 /* ========== REDUCED MOTION SUPPORT ========== */
 @media (prefers-reduced-motion: reduce) {
+
   .header-container,
   .nav-btn,
   .header-brand,
   .mobile-nav-container {
     transition: none;
   }
-  
+
   .nav-btn::before {
     display: none;
   }

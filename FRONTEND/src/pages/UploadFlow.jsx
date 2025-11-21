@@ -4,7 +4,6 @@ import { get, set, clear } from "idb-keyval";
 import StepConferencia from "./StepConferencia";
 import StepCarga from "./StepCarga";
 import StepCanhoto from "./StepCanhoto";
-import StepHeader from "../components/StepHeader";
 import Modal from "../components/Modal";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import Header from "../components/Header";

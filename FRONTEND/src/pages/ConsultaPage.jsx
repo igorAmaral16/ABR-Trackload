@@ -53,7 +53,7 @@ export default function ConsultaDocumentos() {
   // Carrega cache / API
   useEffect(() => {
     const CACHE_KEY = "documentos_cache_v1";
-    const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24h
+    const CACHE_TTL_MS = 1000 * 60 * 60 * 1; // 1h
 
     async function fetchAndCache() {
       setLoading(true);

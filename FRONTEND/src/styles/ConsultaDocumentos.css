@@ -30,7 +30,7 @@ body {
 .consulta-container {
   background: var(--white);
   border-radius: var(--radius);
-  padding: 2rem;
+  padding: 3rem;
   margin: 2rem auto;
   width: 90%;
   max-width: 1000px;
@@ -789,7 +789,7 @@ body {
 
 @media (max-width: 480px) {
   .consulta-container {
-    padding: 1rem;
+    padding: 1 2rem;
   }
 
   .consulta-table th,
