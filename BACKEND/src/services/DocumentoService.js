@@ -21,7 +21,10 @@ const DB_SERIE_FIXA = process.env.DB_SERIE_FIXA || '4';
 const BASE_UPLOAD_PATH = process.env.BASE_UPLOAD_PATH;
 
 const PUBLIC_BASE_URL =
-  process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
+  process.env.PUBLIC_BASE_URL || 'http://localhost:5050';
+
+// Prefixo de rota da API (útil em dev quando o frontend proxy usa /api)
+const API_PREFIX = process.env.API_PREFIX || '';
 
 const directories = {
   conferencia: path.join(BASE_UPLOAD_PATH, 'conferencia'),
@@ -228,8 +231,6 @@ async function listarDocumentosViaBanco({ nota, data }) {
       const cliente = String(row.CLIENTE ?? '').trim();
       const dataRaw = String(row.DATA_EMISSAO ?? '').trim();
 
-      console.log('DATA EXATA: ' + dataRaw);
-
       if (!numero || !dataRaw) continue;
 
       const nf = formatDocumento(serie, numero);
@@ -239,10 +240,10 @@ async function listarDocumentosViaBanco({ nota, data }) {
       const imagens = imgEntry
         ? imgEntry.imagens
         : {
-            conferencia: [],
-            carga: [],
-            canhoto: [],
-          };
+          conferencia: [],
+          carga: [],
+          canhoto: [],
+        };
 
       documentos.push({
         nf,
@@ -348,7 +349,13 @@ function isImagemValida(fileName) {
 }
 
 function buildPublicUrl(categoria, fileName) {
-  return `${PUBLIC_BASE_URL}/uploads/${categoria}/${fileName}`;
+  // Use API_PREFIX se fornecido (ex: '/api') para que o frontend dev (Vite)
+  // encaminhe corretamente via proxy. Caso contrário, retorna caminho absoluto.
+  const prefix = (API_PREFIX || '').replace(/\/$/, '');
+  if (prefix) {
+    return `${prefix}/uploads/${categoria}/${fileName}`;
+  }
+  return `${PUBLIC_BASE_URL.replace(/\/$/, '')}/uploads/${categoria}/${fileName}`;
 }
 
 module.exports = {

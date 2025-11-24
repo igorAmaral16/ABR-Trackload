@@ -19,7 +19,9 @@ const BASE_UPLOAD_PATH =
 
 // Servir arquivos de imagem da rede via HTTP
 // /uploads/conferencia/11-111111_conferencia.jpg
-app.use('/uploads', express.static(BASE_UPLOAD_PATH));
+// Serve both /uploads and /api/uploads so dev proxy (which forwards /api/*)
+// can reach the static files without extra rewrite rules.
+app.use(['/uploads', '/api/uploads'], express.static(BASE_UPLOAD_PATH));
 
 // Rotas
 app.use('/api/upload', uploadRoutes);

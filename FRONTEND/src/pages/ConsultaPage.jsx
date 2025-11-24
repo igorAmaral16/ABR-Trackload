@@ -9,6 +9,7 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 import formatDate, { parseToDate } from "../utils/formatDate";
+import { formatNota, formatNotaPattern } from "../utils/maskNota";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import "../styles/ConsultaDocumentos.css";
@@ -42,6 +43,7 @@ export default function ConsultaDocumentos() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [imgLoading, setImgLoading] = useState(false);
 
   const zoomIn = () =>
     setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
@@ -149,11 +151,56 @@ export default function ConsultaDocumentos() {
     setFiltersOpen((prev) => !prev);
   };
 
+  // Prefetch current image and adjacent images to improve responsiveness
+  useEffect(() => {
+    if (!previewDoc) return;
+    const list = getActiveImageList(previewDoc, activePreviewTab);
+    if (!list || !list.length) {
+      setImgLoading(false);
+      return;
+    }
+
+    const currentIndex = activeImageIndex >= list.length ? 0 : activeImageIndex;
+    const src = list[currentIndex];
+    if (!src) {
+      setImgLoading(false);
+      return;
+    }
+
+    setImgLoading(true);
+    let cancelled = false;
+
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (!cancelled) setImgLoading(false);
+    };
+    img.onerror = () => {
+      if (!cancelled) setImgLoading(false);
+    };
+    img.src = src;
+
+    // prefetch next image
+    if (list.length > 1) {
+      const next = list[(currentIndex + 1) % list.length];
+      const p = new Image();
+      p.decoding = 'async';
+      p.src = next;
+    }
+
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [previewDoc, activePreviewTab, activeImageIndex]);
+
   const openPreview = (doc, tab = "conferencia") => {
     setPreviewDoc(doc);
     setActivePreviewTab(tab);
     setActiveImageIndex(0);
     resetZoom();
+    setImgLoading(true);
   };
 
   const closePreview = () => {
@@ -232,15 +279,28 @@ export default function ConsultaDocumentos() {
       const q = appliedFilters.search.toLowerCase();
       const type = appliedFilters.searchType || "ambos";
       result = result.filter((d) => {
-        const nf = String(d.nf || "").toLowerCase();
-        const cliente = String(d.cliente || "").toLowerCase();
-        if (type === "nota") return nf.includes(q);
-        if (type === "cliente") return cliente.includes(q);
-        return nf.includes(q) || cliente.includes(q);
+        const nfRaw = String(d.nf || "");
+        const clienteRaw = String(d.cliente || "");
+
+        if (type === "nota") {
+          // compare digits-only for nota searches
+          const nfDigits = formatNota(nfRaw, true);
+          return nfDigits.includes(q);
+        }
+
+        if (type === "cliente") {
+          const cliente = formatNota(clienteRaw, false).toLowerCase();
+          return cliente.includes(q);
+        }
+
+        // ambos: check nota (digits) or cliente (text)
+        const nfDigits = formatNota(nfRaw, true);
+        const cliente = formatNota(clienteRaw, false).toLowerCase();
+        return nfDigits.includes(q) || cliente.includes(q);
       });
     }
 
-    // GARANTIA: appliedFilters.data sempre tem valor (não permitimos vazio)
+    // If a date is set, filter by it. If `data` is empty, search across all dates.
     if (appliedFilters.data) {
       result = result.filter(
         (d) => d.data && d.data.startsWith(appliedFilters.data)
@@ -318,22 +378,32 @@ export default function ConsultaDocumentos() {
               overflow: zoom > 1 ? "auto" : "hidden",
             }}
           >
-            <img
-              src={currentSrc}
-              alt={`${activePreviewTab} ${currentIndex + 1}`}
-              className={`preview-image ${zoom > 1 ? "zoomed" : ""}`}
-              style={{
-                transform: `scale(${zoom})`,
-                transition: "transform 150ms ease",
-                cursor: zoom > 1 ? "grab" : "zoom-in",
-              }}
-              onDoubleClick={() =>
-                zoom === 1 ? zoomIn() : resetZoom()
-              }
-              onClick={() => setFullscreenImage(currentSrc)}
-              draggable={false}
-              loading="lazy"
-            />
+              <div style={{ position: 'relative', width: '100%' }}>
+                {imgLoading && (
+                  <div className="img-spinner-overlay">
+                    <div className="img-spinner" aria-hidden="true" />
+                  </div>
+                )}
+                <img
+                  src={currentSrc}
+                  alt={`${activePreviewTab} ${currentIndex + 1}`}
+                  className={`preview-image ${zoom > 1 ? "zoomed" : ""}`}
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transition: "transform 150ms ease",
+                    cursor: zoom > 1 ? "grab" : "zoom-in",
+                  }}
+                  onDoubleClick={() =>
+                    zoom === 1 ? zoomIn() : resetZoom()
+                  }
+                  onClick={() => setFullscreenImage(currentSrc)}
+                  draggable={false}
+                  loading="lazy"
+                  decoding="async"
+                  onLoad={() => setImgLoading(false)}
+                  onError={() => setImgLoading(false)}
+                />
+              </div>
           </div>
 
           <button
@@ -423,11 +493,18 @@ export default function ConsultaDocumentos() {
     const q = pendingSearch.trim();
     const type = detectSearchType(q);
 
-    // agora SEMPRE aplicamos uma data (nunca vazio)
-    const dataToApply = pendingFilterDate || today;
+    // Format the query for consistency (if searching by nota, keep only digits)
+    const qFormatted = type === "nota" ? formatNota(q, true) : formatNota(q, false);
+
+    // Update the visible input with the formatted value
+    setPendingSearch(qFormatted);
+
+    // If there is a search query, perform the search across all data
+    // (do not limit by the selected date). Otherwise, always apply a date.
+    const dataToApply = qFormatted ? "" : (pendingFilterDate || today);
 
     setAppliedFilters({
-      search: q,
+      search: qFormatted,
       searchType: type,
       data: dataToApply,
       sortOrder: pendingSortOrder,
@@ -473,9 +550,8 @@ export default function ConsultaDocumentos() {
       if (has) {
         openPreview(doc, tipo);
       } else {
-        navigate(
-          `/upload/${tipo}?nf=${encodeURIComponent(doc.nf)}`
-        );
+        const nfParam = encodeURIComponent(formatNota(doc.nf, true));
+        navigate(`/upload/${tipo}?nf=${nfParam}`);
       }
     };
 
@@ -518,7 +594,21 @@ export default function ConsultaDocumentos() {
             type="text"
             placeholder="Buscar por NF ou cliente..."
             value={pendingSearch}
-            onChange={(e) => setPendingSearch(e.target.value)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              // If contains letters OR whitespace, treat as free text (normalize lightly)
+              const hasLetter = /[A-Za-zÀ-ÖØ-öø-ÿ]/.test(raw);
+              const hasSpace = /\s/.test(raw);
+              if (hasLetter || hasSpace) {
+                // normalize but preserve a trailing space so the user can continue typing words
+                const normalized = formatNota(raw, false);
+                const withTrailing = raw.endsWith(" ") ? normalized + " " : normalized;
+                setPendingSearch(withTrailing);
+              } else {
+                // numeric-like input: format to XX-XXXXXX as the user types
+                setPendingSearch(formatNotaPattern(raw));
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 applyFilters();
