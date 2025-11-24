@@ -14,6 +14,9 @@ import Header from "../components/Header";
 import "../styles/ConsultaDocumentos.css";
 
 export default function ConsultaDocumentos() {
+  // sugestão de data atual
+  const today = new Date().toISOString().slice(0, 10);
+
   // cache + data
   const [documentsCache, setDocumentsCache] = useState([]); // full cached set
   const [loading, setLoading] = useState(true);
@@ -22,15 +25,13 @@ export default function ConsultaDocumentos() {
   // Filtros
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [pendingSearch, setPendingSearch] = useState("");
-  const [pendingFilterDate, setPendingFilterDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [pendingFilterDate, setPendingFilterDate] = useState(() => today);
   const [pendingSortOrder, setPendingSortOrder] = useState("desc");
   const [pendingOnlyComplete, setPendingOnlyComplete] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({
     search: "",
     searchType: "ambos",
-    data: "",
+    data: today, // sempre iniciar com a data atual
     sortOrder: "desc",
     onlyComplete: false,
   });
@@ -75,13 +76,15 @@ export default function ConsultaDocumentos() {
         }
 
         setDocumentsCache(arr);
-        setAppliedFilters({
+        // manter data inicial como hoje
+        setAppliedFilters((prev) => ({
+          ...prev,
           search: "",
           searchType: "ambos",
-          data: "",
+          data: today,
           sortOrder: "desc",
           onlyComplete: false,
-        });
+        }));
       } catch (err) {
         console.error(err);
         setError("Erro ao carregar documentos.");
@@ -102,6 +105,8 @@ export default function ConsultaDocumentos() {
         ) {
           setDocumentsCache(parsed.data);
           setLoading(false);
+          // garante filtro inicial com data de hoje
+          setAppliedFilters((prev) => ({ ...prev, data: today }));
           return;
         }
       }
@@ -110,7 +115,7 @@ export default function ConsultaDocumentos() {
     }
 
     fetchAndCache();
-  }, []);
+  }, [today]);
 
   // Fecha modal com ESC e navega com setas
   useEffect(() => {
@@ -174,6 +179,19 @@ export default function ConsultaDocumentos() {
     return imagens.canhoto || [];
   };
 
+  // novo: determina status da linha
+  const getDocStatus = (doc) => {
+    const imgs = doc.imagens || {};
+    const hasConf = (imgs.conferencia || []).length > 0;
+    const hasCarga = (imgs.carga || []).length > 0;
+    const hasCanhoto = (imgs.canhoto || []).length > 0;
+    const total = [hasConf, hasCarga, hasCanhoto].filter(Boolean).length;
+
+    if (total === 3) return "complete";
+    if (total === 0) return "missing-all";
+    return "missing-some";
+  };
+
   // heurística pra saber se busca é por NF ou Cliente
   const detectSearchType = (q) => {
     if (!q) return "ambos";
@@ -222,6 +240,7 @@ export default function ConsultaDocumentos() {
       });
     }
 
+    // GARANTIA: appliedFilters.data sempre tem valor (não permitimos vazio)
     if (appliedFilters.data) {
       result = result.filter(
         (d) => d.data && d.data.startsWith(appliedFilters.data)
@@ -302,8 +321,7 @@ export default function ConsultaDocumentos() {
             <img
               src={currentSrc}
               alt={`${activePreviewTab} ${currentIndex + 1}`}
-              className={`preview-image ${zoom > 1 ? "zoomed" : ""
-                }`}
+              className={`preview-image ${zoom > 1 ? "zoomed" : ""}`}
               style={{
                 transform: `scale(${zoom})`,
                 transition: "transform 150ms ease",
@@ -380,8 +398,7 @@ export default function ConsultaDocumentos() {
               <button
                 key={idx}
                 type="button"
-                className={`preview-thumb ${idx === currentIndex ? "active" : ""
-                  }`}
+                className={`preview-thumb ${idx === currentIndex ? "active" : ""}`}
                 onClick={() => setActiveImageIndex(idx)}
               >
                 <img
@@ -405,10 +422,14 @@ export default function ConsultaDocumentos() {
   const applyFilters = () => {
     const q = pendingSearch.trim();
     const type = detectSearchType(q);
+
+    // agora SEMPRE aplicamos uma data (nunca vazio)
+    const dataToApply = pendingFilterDate || today;
+
     setAppliedFilters({
       search: q,
       searchType: type,
-      data: q ? "" : pendingFilterDate,
+      data: dataToApply,
       sortOrder: pendingSortOrder,
       onlyComplete: pendingOnlyComplete,
     });
@@ -417,13 +438,13 @@ export default function ConsultaDocumentos() {
 
   const resetFilters = () => {
     setPendingSearch("");
-    setPendingFilterDate(new Date().toISOString().slice(0, 10));
+    setPendingFilterDate(today);
     setPendingOnlyComplete(false);
     setPendingSortOrder("desc");
     setAppliedFilters({
       search: "",
       searchType: "ambos",
-      data: "",
+      data: today,
       sortOrder: "desc",
       onlyComplete: false,
     });
@@ -462,12 +483,10 @@ export default function ConsultaDocumentos() {
       <td key={tipo} className="img-category-cell">
         <div className="img-status">
           <div
-            className={`img-status-pill ${has ? "ok" : "missing"
-              }`}
+            className={`img-status-pill ${has ? "ok" : "missing"}`}
           >
             <span
-              className={`img-status-dot ${has ? "ok" : "missing"
-                }`}
+              className={`img-status-dot ${has ? "ok" : "missing"}`}
             />
             <span>{has ? "Imagem enviada" : "Sem imagem"}</span>
           </div>
@@ -520,13 +539,13 @@ export default function ConsultaDocumentos() {
         <div className="filters-row">
           <button
             type="button"
-            className={`filter-toggle ${filtersOpen ? "active" : ""
-              }`}
+            className={`filter-toggle ${filtersOpen ? "active" : ""}`}
             onClick={toggleFilters}
           >
             <FaFilter className="filter-icon" />
             <span>Filtros</span>
           </button>
+
           <span className="filters-summary">
             {appliedFilters.sortOrder === "desc"
               ? "Mais recentes primeiro"
@@ -538,12 +557,11 @@ export default function ConsultaDocumentos() {
                   ? "Cliente"
                   : "NF ou Cliente"
               })`
-              : appliedFilters.data
-                ? ` · Data ${formatDate(appliedFilters.data)}`
-                : ""}
-            {appliedFilters.onlyComplete
-              ? " · Somente NF completas"
               : ""}
+            {appliedFilters.data
+              ? ` · Data ${formatDate(appliedFilters.data)}`
+              : ""}
+            {appliedFilters.onlyComplete ? " · Somente NF completas" : ""}
           </span>
         </div>
 
@@ -559,9 +577,9 @@ export default function ConsultaDocumentos() {
                     type="date"
                     value={pendingFilterDate}
                     onChange={(e) =>
-                      setPendingFilterDate(e.target.value)
+                      // nunca permitir vazio: se estiver vazio, usa hoje
+                      setPendingFilterDate(e.target.value || today)
                     }
-                    disabled={pendingSearch.trim() !== ""}
                   />
                 </label>
               </div>
@@ -648,7 +666,7 @@ export default function ConsultaDocumentos() {
         {/* Tabela */}
         {!loading && !error && (
           <div className="table-wrapper">
-            {/* Legenda das categorias */}
+            {/* Legenda das categorias + status */}
             <div className="images-legend">
               <span className="legend-item">
                 <span className="legend-dot ok" />
@@ -657,6 +675,17 @@ export default function ConsultaDocumentos() {
               <span className="legend-item">
                 <span className="legend-dot missing" />
                 Sem imagem (clique em "Adicionar")
+              </span>
+
+              {/* Legenda de status por linha */}
+              <span className="legend-item legend-status">
+                <span className="status-box complete" /> Concluído
+              </span>
+              <span className="legend-item legend-status">
+                <span className="status-box missing-some" /> Faltando alguma
+              </span>
+              <span className="legend-item legend-status">
+                <span className="status-box missing-all" /> Faltando todas
               </span>
             </div>
 
@@ -673,22 +702,25 @@ export default function ConsultaDocumentos() {
               </thead>
               <tbody>
                 {filteredDocs.length > 0 ? (
-                  pagedDocs.map((doc, idx) => (
-                    <tr key={idx}>
-                      <td>{doc.nf}</td>
-                      <td>
-                        {formatDate(doc.data, {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td>{doc.cliente}</td>
-                      {renderCategoryCell(doc, "conferencia")}
-                      {renderCategoryCell(doc, "carga")}
-                      {renderCategoryCell(doc, "canhoto")}
-                    </tr>
-                  ))
+                  pagedDocs.map((doc, idx) => {
+                    const status = getDocStatus(doc);
+                    return (
+                      <tr key={idx} className={status}>
+                        <td>{doc.nf}</td>
+                        <td>
+                          {formatDate(doc.data, {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </td>
+                        <td>{doc.cliente}</td>
+                        {renderCategoryCell(doc, "conferencia")}
+                        {renderCategoryCell(doc, "carga")}
+                        {renderCategoryCell(doc, "canhoto")}
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="6" className="no-results">
@@ -809,8 +841,8 @@ export default function ConsultaDocumentos() {
               <button
                 type="button"
                 className={`preview-tab-imagens ${activePreviewTab === "conferencia"
-                    ? "active"
-                    : ""
+                  ? "active"
+                  : ""
                   }`}
                 onClick={() => {
                   setActivePreviewTab("conferencia");

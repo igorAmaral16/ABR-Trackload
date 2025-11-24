@@ -11,9 +11,13 @@
   --radius: 10px;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   --transition: all 0.25s ease;
+
+  /* status colors */
+  --status-complete: #1b8a4b;
+  --status-missing-some: #ffc107;
+  --status-missing-all: #ff5252;
 }
 
-/* ========== BASE ========== */
 body {
   font-family: 'IBM Plex Sans', sans-serif;
   background: var(--bg);
@@ -26,7 +30,6 @@ body {
   min-height: 100vh;
 }
 
-/* CONTAINER */
 .consulta-container {
   background: var(--white);
   border-radius: var(--radius);
@@ -150,6 +153,7 @@ body {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -262,13 +266,15 @@ body {
   padding: 0.8rem;
   border-bottom: 1px solid #f0f0f0;
   vertical-align: top;
+  position: relative;
+  /* usado para a barra esquerda */
 }
 
-.consulta-table tr:hover {
+.consulta-table tr:hover td {
   background: #f9fbfd;
 }
 
-/* LEGEND DE CATEGORIAS */
+/* legenda */
 .images-legend {
   display: flex;
   justify-content: flex-end;
@@ -276,6 +282,8 @@ body {
   margin: 0.4rem 0 0.3rem;
   font-size: 0.8rem;
   color: #555;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .legend-item {
@@ -299,6 +307,86 @@ body {
 .legend-dot.missing {
   background: #ff0000;
   border-color: #ccc;
+}
+
+/* legend status boxes */
+.legend-status {
+  margin-left: 6px;
+}
+
+.status-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.status-box.complete {
+  background: var(--status-complete);
+}
+
+.status-box.missing-some {
+  background: var(--status-missing-some);
+}
+
+.status-box.missing-all {
+  background: var(--status-missing-all);
+}
+
+/* STATUS VISUAL NA LINHA (preenchimento + barra esquerda) */
+.consulta-table tbody tr.complete td {
+  background: rgba(27, 138, 75, 0.06);
+  transition: background 0.18s ease;
+}
+
+.consulta-table tbody tr.missing-some td {
+  background: rgba(255, 193, 7, 0.06);
+  transition: background 0.18s ease;
+}
+
+.consulta-table tbody tr.missing-all td {
+  background: rgba(255, 82, 82, 0.05);
+  color: #7a1a1a;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+/* barra colorida à esquerda (aparece como "indicador" da linha) */
+.consulta-table tbody tr.complete td:first-child::before,
+.consulta-table tbody tr.missing-some td:first-child::before,
+.consulta-table tbody tr.missing-all td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 6px;
+  border-radius: 3px;
+}
+
+.consulta-table tbody tr.complete td:first-child::before {
+  background: var(--status-complete);
+}
+
+.consulta-table tbody tr.missing-some td:first-child::before {
+  background: var(--status-missing-some);
+}
+
+.consulta-table tbody tr.missing-all td:first-child::before {
+  background: var(--status-missing-all);
+}
+
+/* pequenos ajustes de hover para manter legibilidade */
+.consulta-table tbody tr.complete:hover td {
+  background: rgba(27, 138, 75, 0.09);
+}
+
+.consulta-table tbody tr.missing-some:hover td {
+  background: rgba(255, 193, 7, 0.09);
+}
+
+.consulta-table tbody tr.missing-all:hover td {
+  background: rgba(255, 82, 82, 0.07);
 }
 
 /* STATUS POR CATEGORIA (Conferência, Carga, Canhoto) */
@@ -331,10 +419,10 @@ body {
 }
 
 .img-status-pill.missing {
-  background: #f5f5f5;
-  color: #ff0000;
+  background: #fdf2f2;
+  color: #a11a1a;
   border-style: dashed;
-  border-color: #d0d0d0;
+  border-color: #f1d3d3;
 }
 
 .img-status-dot {
@@ -348,7 +436,7 @@ body {
 }
 
 .img-status-dot.missing {
-  background: #ff0000;
+  background: #ff6b6b;
 }
 
 .img-status-actions {
@@ -593,7 +681,6 @@ body {
   padding: 4px;
   border-radius: 6px;
   background: #fff;
-  flex: 0 0 auto;
 }
 
 .preview-thumb.active {
@@ -658,6 +745,7 @@ body {
     min-width: 30px;
     padding: 0.3rem 0.45rem;
   }
+
   .pagination-bar {
     gap: 6px;
   }
