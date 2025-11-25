@@ -12,6 +12,9 @@ import formatDate, { parseToDate } from "../utils/formatDate";
 import { formatNota, formatNotaPattern } from "../utils/maskNota";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
+import StepConferencia from "./StepConferencia";
+import StepCarga from "./StepCarga";
+import StepCanhoto from "./StepCanhoto";
 import "../styles/ConsultaDocumentos.css";
 
 export default function ConsultaDocumentos() {
@@ -44,6 +47,8 @@ export default function ConsultaDocumentos() {
   const [zoom, setZoom] = useState(1);
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [imgLoading, setImgLoading] = useState(false);
+  // upload modal state when opening upload steps from Consulta
+  const [uploadModal, setUploadModal] = useState(null);
 
   const zoomIn = () =>
     setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
@@ -550,8 +555,15 @@ export default function ConsultaDocumentos() {
       if (has) {
         openPreview(doc, tipo);
       } else {
-        const nfParam = encodeURIComponent(formatNota(doc.nf, true));
-        navigate(`/upload/${tipo}?nf=${nfParam}`);
+        const formatDocForStep = (raw) => {
+          const digits = String(raw || "").replace(/\D/g, "");
+          if (!digits) return "";
+          return digits.length > 2 ? digits.slice(0, 2) + "-" + digits.slice(2, 8) : digits;
+        };
+
+        const nfFormatted = formatDocForStep(doc.nf);
+        // open upload step inside modal when clicking from Consulta
+        setUploadModal({ tipo, nf: nfFormatted });
       }
     };
 
@@ -971,6 +983,37 @@ export default function ConsultaDocumentos() {
             <section className="preview-content-imagens">
               {renderImagesPreview()}
             </section>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de upload (abre passos: Conferência / Carga / Canhoto) quando acionado na tela de consulta */}
+      {uploadModal && (
+        <div className="modal-overlay upload-overlay" onClick={() => setUploadModal(null)}>
+          <div
+            className="modal-box upload-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 style={{ margin: 0 }}>{uploadModal.tipo === "conferencia" ? "Conferência" : uploadModal.tipo === "carga" ? "Carga" : "Canhoto"}</h2>
+              <button type="button" className="preview-close-imagens" onClick={() => setUploadModal(null)} aria-label="Fechar modal">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {uploadModal.tipo === "conferencia" && (
+                <StepConferencia modal onClose={() => setUploadModal(null)} initialDocumentNumber={uploadModal.nf} />
+              )}
+
+              {uploadModal.tipo === "carga" && (
+                <StepCarga modal onClose={() => setUploadModal(null)} initialDocumentNumber={uploadModal.nf} />
+              )}
+
+              {uploadModal.tipo === "canhoto" && (
+                <StepCanhoto modal onClose={() => setUploadModal(null)} initialDocumentNumber={uploadModal.nf} />
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -11,7 +11,7 @@ import { savePendingUpload } from "../utils/offlineSync";
 
 import "../styles/UploadPage.css";
 
-export default function StepConferencia() {
+export default function StepConferencia({ modal = false, onClose, initialDocumentNumber = null }) {
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -38,6 +38,11 @@ export default function StepConferencia() {
 
   // Preenche automaticamente a partir do parâmetro `nf` e remove o param
   useEffect(() => {
+    if (initialDocumentNumber) {
+      setDocumentNumber(initialDocumentNumber);
+      return;
+    }
+
     const nf = searchParams.get("nf");
     if (!nf) return;
     const formatted = formatDoc(nf);
@@ -47,7 +52,7 @@ export default function StepConferencia() {
       navigate(location.pathname, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialDocumentNumber]);
 
   const handleFileChange = async (e) => {
     const selected = e.target.files[0];
@@ -145,6 +150,7 @@ export default function StepConferencia() {
           setShowConfirmModal(false);
           resetPage();
           setIsSubmitting(false);
+          if (onClose) onClose();
         }, 1200);
 
         return;
@@ -193,7 +199,7 @@ export default function StepConferencia() {
 
   return (
     <div className="upload-page">
-      <Header />
+      {!modal && <Header />}
 
       <main className="upload-main">
         <div className="upload-card">
@@ -230,7 +236,10 @@ export default function StepConferencia() {
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => navigate("/")}
+                onClick={() => {
+                  if (modal) onClose?.();
+                  else navigate("/");
+                }}
                 disabled={isSubmitting || loadingImage}
               >
                 Cancelar

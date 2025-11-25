@@ -1,6 +1,7 @@
 // src/components/FileInput.jsx
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { FaImage, FaTrash } from "react-icons/fa";
+import ModalEscolherFonte from "./ModalEscolherFonte";
 
 export default function FileInput({
   label,
@@ -11,11 +12,25 @@ export default function FileInput({
   resetKey,
 }) {
   const inputRef = useRef(null);
+  const cameraRef = useRef(null);
   const isImage = fileType === "foto";
+  const [showSourceModal, setShowSourceModal] = useState(false);
 
   const handleClick = () => {
+    setShowSourceModal(true);
+  };
+
+  const handleSelectFromGaleria = () => {
+    setShowSourceModal(false);
     if (inputRef.current) {
       inputRef.current.click();
+    }
+  };
+
+  const handleSelectFromCamera = () => {
+    setShowSourceModal(false);
+    if (cameraRef.current) {
+      cameraRef.current.click();
     }
   };
 
@@ -23,6 +38,7 @@ export default function FileInput({
     // clear underlying input when resetKey changes
     try {
       if (inputRef.current) inputRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
     } catch (e) {
       /* ignore */
     }
@@ -31,6 +47,7 @@ export default function FileInput({
   const handleClear = () => {
     try {
       if (inputRef.current) inputRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
     } catch (e) { }
     if (typeof onClear === "function") onClear();
   };
@@ -45,7 +62,7 @@ export default function FileInput({
         onClick={handleClick}
       >
         <FaImage />
-        <span>Escolher da galeria</span>
+        <span>Escolher foto</span>
       </button>
 
       {onClear && (
@@ -58,19 +75,35 @@ export default function FileInput({
         </button>
       )}
 
-      {/* Input real, escondido, sem capture (não força câmera) */}
+      {/* Input real para galeria, escondido */}
       <input
         ref={inputRef}
         type="file"
         accept={isImage ? "image/*" : undefined}
-        // NÃO coloque "capture" aqui
+        onChange={onChange}
+        style={{ display: "none" }}
+      />
+
+      {/* Input real para câmera, escondido */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept={isImage ? "image/*" : undefined}
+        capture="environment"
         onChange={onChange}
         style={{ display: "none" }}
       />
 
       <p className="file-input-hint">
-        Toque em “Escolher da galeria” para usar uma foto já existente.
+        Toque em "Escolher foto" para selecionar da galeria ou usar a câmera.
       </p>
+
+      <ModalEscolherFonte
+        isOpen={showSourceModal}
+        onClose={() => setShowSourceModal(false)}
+        onGaleria={handleSelectFromGaleria}
+        onCamera={handleSelectFromCamera}
+      />
     </div>
   );
 }

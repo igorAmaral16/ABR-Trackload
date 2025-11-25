@@ -11,7 +11,7 @@ import { savePendingUpload } from "../utils/offlineSync";
 
 import "../styles/UploadPage.css";
 
-export default function StepCarga() {
+export default function StepCarga({ modal = false, onClose, initialDocumentNumber = null }) {
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -42,6 +42,11 @@ export default function StepCarga() {
 
   // Preenche automaticamente a partir do parâmetro `nf` e remove o param
   useEffect(() => {
+    if (initialDocumentNumber) {
+      setDocumentNumber(initialDocumentNumber);
+      return;
+    }
+
     const nf = searchParams.get("nf");
     if (!nf) return;
     const formatted = formatDoc(nf);
@@ -51,7 +56,7 @@ export default function StepCarga() {
       navigate(location.pathname, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialDocumentNumber]);
 
   const handleFileChange = async (field, file, nomeMessage) => {
     if (!file) return;
@@ -161,6 +166,7 @@ export default function StepCarga() {
           setShowConfirmModal(false);
           resetPage();
           setIsSubmitting(false);
+          if (onClose) onClose();
         }, 1200);
 
         return;
@@ -190,6 +196,7 @@ export default function StepCarga() {
         setShowConfirmModal(false);
         resetPage();
         setIsSubmitting(false);
+        if (onClose) onClose();
       }, 1200);
     } catch (err) {
       console.error(err);
@@ -212,7 +219,7 @@ export default function StepCarga() {
 
   return (
     <div className="upload-page">
-      <Header />
+      {!modal && <Header />}
 
       <main className="upload-main">
         <div className="upload-card">
@@ -283,7 +290,10 @@ export default function StepCarga() {
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => navigate("/")}
+                onClick={() => {
+                  if (modal) onClose?.();
+                  else navigate("/");
+                }}
                 disabled={isSubmitting || loadingImage}
               >
                 Cancelar
