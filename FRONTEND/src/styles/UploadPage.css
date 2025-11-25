@@ -301,6 +301,7 @@ button:disabled {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -521,7 +522,8 @@ button:disabled {
   position: fixed;
   bottom: 20px;
   left: 20px;
-  background: #1b5e20; /* verde */
+  background: #1b5e20;
+  /* verde */
   color: var(--white);
   padding: 0.8rem 1rem;
   border-radius: var(--radius);
@@ -531,7 +533,8 @@ button:disabled {
   gap: 0.6rem;
   font-weight: 600;
   animation: toastSlide 0.3s ease forwards;
-  z-index: 1200; /* acima do modal */
+  z-index: 1200;
+  /* acima do modal */
 }
 
 .upload-toast .icon {
@@ -664,6 +667,7 @@ button:disabled {
     transform: scale(0.8);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -858,7 +862,7 @@ button:disabled {
 @media (max-width: 1024px) {
   .container {
     width: 92%;
-    padding: 1.8rem;
+
   }
 
   .button-row {
