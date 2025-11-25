@@ -234,6 +234,12 @@ async function listarDocumentosViaBanco({ nota, data }) {
       if (!numero || !dataRaw) continue;
 
       const nf = formatDocumento(serie, numero);
+
+      // Ignorar explicitamente a NF 04-999999 quando vier do banco
+      if (nf === '04-999999') {
+        continue;
+      }
+
       const dataISO = convertAs400DateToISO(dataRaw);
 
       const imgEntry = imgIndex.get(nf);
